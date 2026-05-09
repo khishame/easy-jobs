@@ -1,6 +1,7 @@
 import streamlit as st
 import psycopg2
 import bcrypt
+import os
 
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
