@@ -6,9 +6,6 @@ import os
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-# =========================
-# GET USER (ID + LOGIN DATA)
-# =========================
 def get_user(username_or_email):
     try:
         with get_connection() as conn:
@@ -63,6 +60,122 @@ if "username" not in st.session_state:
 # UI
 # =========================
 st.set_page_config(page_title="Easy Jobs", page_icon=":briefcase:", layout="centered")
+
+st.markdown("""
+<style>
+
+/* =========================
+   GLOBAL BACKGROUND (LINKEDIN DARK MODE STYLE)
+========================= */
+
+[data-testid="stAppViewContainer"] {
+    background: #0b1220;
+}
+
+.block-container {
+    max-width: 850px;
+    margin: auto;
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+/* =========================
+   MAIN HERO TEXT (LOGIN HEADER)
+========================= */
+
+h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+
+h3, h2, p {
+    text-align: center;
+    color: #94a3b8;
+}
+
+/* =========================
+   INPUT FIELDS (MODERN AUTH STYLE)
+========================= */
+
+input {
+    background-color: #0f172a !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 10px !important;
+    padding: 0.6rem !important;
+    color: #e5e7eb !important;
+}
+
+input:focus {
+    border: 1px solid #38bdf8 !important;
+    box-shadow: 0 0 12px rgba(56,189,248,0.25) !important;
+}
+
+/* =========================
+   BUTTONS (LINKEDIN STYLE CTA)
+========================= */
+
+.stButton > button {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #e5e7eb;
+    border-radius: 10px;
+    padding: 0.55rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: rgba(56,189,248,0.12);
+    border: 1px solid rgba(56,189,248,0.5);
+    transform: translateY(-2px);
+}
+
+/* LOGIN BUTTON SPECIAL EMPHASIS */
+.stButton > button[kind="primary"] {
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    border: none;
+    color: white;
+}
+
+.stButton > button[kind="primary"]:hover {
+    filter: brightness(1.1);
+}
+
+/* =========================
+   TWO COLUMN ALIGNMENT FIX
+========================= */
+
+div[data-testid="column"] {
+    padding: 0.5rem;
+}
+
+/* =========================
+   SUCCESS / ERROR MESSAGES
+========================= */
+
+.stAlert {
+    border-radius: 10px;
+}
+
+
+footer {
+    visibility: hidden;
+}
+
+.element-container {
+    margin-bottom: 0.8rem;
+}
+
+/* subtle spacing */
+.block-container {
+    gap: 0.6rem;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 st.subheader("Welcome to Easy Jobs 👋")
 st.title("Sell your skills or hire a skilled worker 🔍")
