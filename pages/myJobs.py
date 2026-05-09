@@ -72,6 +72,128 @@ def delete_job(job_id):
 
 
 st.set_page_config(page_title="My Jobs - Easy Jobs", page_icon="📁", layout="centered")
+
+st.markdown("""
+<style>
+
+
+[data-testid="stAppViewContainer"] {
+    background: #0b1220;
+}
+
+
+.block-container {
+    max-width: 1000px;
+    margin: auto;
+    padding: 2rem 2rem 3rem 2rem;
+}
+
+
+h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+
+
+details, div[data-testid="stExpander"] {
+    background: #111827 !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 12px !important;
+    padding: 10px !important;
+    margin-bottom: 10px !important;
+}
+
+summary {
+    font-weight: 600;
+    color: #e5e7eb;
+}
+
+html, body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: #e5e7eb;
+}
+
+p, span, label {
+    color: #94a3b8;
+}
+
+input, textarea {
+    background-color: #0f172a !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 10px !important;
+    color: #e5e7eb !important;
+}
+
+input:focus, textarea:focus {
+    border: 1px solid #38bdf8 !important;
+    box-shadow: 0 0 12px rgba(56,189,248,0.25) !important;
+}
+
+.stButton > button {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.10);
+    color: #e5e7eb;
+    border-radius: 10px;
+    padding: 0.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: rgba(56,189,248,0.12);
+    border: 1px solid rgba(56,189,248,0.4);
+    transform: translateY(-2px);
+}
+
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    border: none;
+    color: white;
+}
+
+.stButton > button:has(span:contains("Delete")),
+.stButton > button:has(span:contains("🗑")) {
+    border: 1px solid rgba(239,68,68,0.5);
+    color: #f87171;
+}
+
+.stButton > button:has(span:contains("🗑")):hover {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.8);
+}
+
+
+div[data-testid="stVerticalBlock"] {
+    gap: 0.6rem;
+}
+
+
+.stCaption {
+    color: #94a3b8;
+    font-size: 0.8rem;
+}
+
+hr {
+    border-color: rgba(255,255,255,0.06);
+}
+
+
+.stButton > button:contains("Home") {
+    border: 1px solid rgba(148,163,184,0.3);
+}
+
+
+footer {
+    visibility: hidden;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 st.title("📁 My Posted Jobs")
 
 
