@@ -1,23 +1,12 @@
 import streamlit as st
 import psycopg2
 
-# =========================
-# DATABASE CONFIG
-# =========================
-DB_CONFIG = {
-    "dbname": "easy_jobs",
-    "user": "postgres",
-    "password": "Mulweli123?",
-    "host": "localhost",
-    "port": "5432"
-}
+import os
 
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-# =========================
-# INIT DB
-# =========================
+
 def init_db():
     with get_connection() as conn:
         with conn.cursor() as cursor:
