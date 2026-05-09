@@ -3,24 +3,11 @@ import psycopg2
 import io
 from datetime import date, timedelta
 from dp import claim_job
-
-# =========================
-# DATABASE CONFIG
-# =========================
-DB_CONFIG = {
-    "dbname": "easy_jobs",
-    "user": "postgres",
-    "password": "Mulweli123?",
-    "host": "localhost",
-    "port": "5432"
-}
+import os
 
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-# =========================
-# INIT TABLE (SAFE)
-# =========================
 def init_db():
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -58,9 +45,6 @@ def get_all_jobs():
             """)
             return cursor.fetchall()
 
-# =========================
-# SAVE / UNSAVE
-# =========================
 def save_job(user_id, job_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -89,9 +73,7 @@ def is_saved(user_id, job_id):
             """, (user_id, job_id))
             return cursor.fetchone() is not None
 
-# =========================
-# SAFE IMAGE RENDER
-# =========================
+
 def show_image(image):
     if not image:
         return
@@ -100,20 +82,13 @@ def show_image(image):
     except:
         st.warning("⚠️ Image could not be displayed")
 
-# =========================
-# PAGE CONFIG
-# =========================
 st.set_page_config(page_title="Easy Jobs", page_icon=":briefcase:", layout="wide")
 
-# =========================
-# HEADER
-# =========================
+
 st.title("🛠️ Easy Jobs Marketplace")
 st.write("Connect with skilled workers or find your next opportunity")
 
-# =========================
-# ACTION BUTTONS
-# =========================
+
 col1, col2, col3, col4,col5 = st.columns(5)
 with col1:
     if st.button("📝 Post a Job", use_container_width=True, type="primary"):
@@ -161,9 +136,7 @@ with st.sidebar:
     if st.button("Clear Filters", use_container_width=True):
         st.rerun()
 
-# =========================
-# SEARCH BAR
-# =========================
+
 search_col1, search_col2 = st.columns([5, 1])
 with search_col1:
     search_job = st.text_input(
