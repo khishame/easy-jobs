@@ -1,24 +1,12 @@
 import streamlit as st
 import psycopg2
 import pandas as pd
-
-# =========================
-# DB CONFIG
-# =========================
-DB_CONFIG = {
-    "dbname": "easy_jobs",
-    "user": "postgres",
-    "password": "123",
-    "host": "localhost",
-    "port": "5432"
-}
+import os
 
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-# =========================
-# SESSION HISTORY SETUP
-# =========================
+
 if "page_history" not in st.session_state:
     st.session_state.page_history = []
 
@@ -26,9 +14,7 @@ CURRENT_PAGE = "Dashboard"
 if not st.session_state.page_history or st.session_state.page_history[-1] != CURRENT_PAGE:
     st.session_state.page_history.append(CURRENT_PAGE)
 
-# =========================
-# STATS
-# =========================
+
 def get_stats():
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -43,9 +29,7 @@ def get_stats():
 
     return jobs, users, avg_price
 
-# =========================
-# PRICE DISTRIBUTION
-# =========================
+
 def get_price_distribution():
     with get_connection() as conn:
         df = pd.read_sql("""
@@ -63,9 +47,7 @@ def get_price_distribution():
         """, conn)
     return df
 
-# =========================
-# USERS OVER TIME
-# =========================
+
 def get_users_over_time():
     with get_connection() as conn:
         df = pd.read_sql("""
@@ -76,9 +58,7 @@ def get_users_over_time():
         """, conn)
     return df
 
-# =========================
-# RECENT JOBS
-# =========================
+
 def get_recent_jobs():
     with get_connection() as conn:
         df = pd.read_sql("""
@@ -89,35 +69,23 @@ def get_recent_jobs():
         """, conn)
     return df
 
-# =========================
-# UI
-# =========================
+
 st.set_page_config(page_title="Dashboard", layout="wide")
 
 st.markdown("""
 <style>
 
-/* =========================
-   GLOBAL BACKGROUND (LINKEDIN STYLE)
-========================= */
-
 [data-testid="stAppViewContainer"] {
     background: #0b1220;
 }
 
-/* =========================
-   MAIN CONTAINER WIDTH (CENTER FEED)
-========================= */
+
 
 .block-container {
     max-width: 1100px;
     margin: auto;
     padding: 1.5rem 2rem 3rem 2rem;
 }
-
-/* =========================
-   TITLE (CLEAN DASHBOARD HEADER)
-========================= */
 
 h1 {
     font-size: 1.8rem;
@@ -126,9 +94,6 @@ h1 {
     text-align: left;
 }
 
-/* =========================
-   METRIC CARDS (LINKEDIN STYLE)
-========================= */
 
 div[data-testid="metric-container"] {
     background: #111827;
@@ -138,14 +103,9 @@ div[data-testid="metric-container"] {
     box-shadow: none;
 }
 
-/* metric numbers */
 div[data-testid="metric-container"] > div {
     color: #e5e7eb;
 }
-
-/* =========================
-   CHART CONTAINERS
-========================= */
 
 div[data-testid="stPlotlyChart"], 
 div[data-testid="stChart"] {
@@ -155,9 +115,6 @@ div[data-testid="stChart"] {
     border: 1px solid rgba(255,255,255,0.06);
 }
 
-/* =========================
-   TABLE (RECENT JOBS)
-========================= */
 
 table {
     background: #111827 !important;
@@ -174,10 +131,6 @@ tbody tr td {
     color: #cbd5e1 !important;
 }
 
-/* =========================
-   BUTTONS (LINKEDIN FLAT STYLE)
-========================= */
-
 .stButton > button {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.08);
@@ -192,18 +145,13 @@ tbody tr td {
     border: 1px solid rgba(56,189,248,0.4);
 }
 
-/* =========================
-   SIDEBAR
-========================= */
+
 
 section[data-testid="stSidebar"] {
     background: #0a0f1c;
     border-right: 1px solid rgba(255,255,255,0.06);
 }
 
-/* =========================
-   TEXT STYLE
-========================= */
 
 html, body {
     font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -214,31 +162,21 @@ p, span, label {
     color: #94a3b8;
 }
 
-/* =========================
-   DIVIDER
-========================= */
 
 hr {
     border-color: rgba(255,255,255,0.06);
 }
 
-/* =========================
-   BACK BUTTON STYLE (IMPORTANT)
-========================= */
+
 
 .stButton > button[kind="secondary"] {
     border: 1px solid rgba(148,163,184,0.3);
 }
 
-/* =========================
-   CLEAN FEED SPACING
-========================= */
-
 .block-container {
     gap: 1rem;
 }
 
-/* remove footer clutter */
 footer {
     visibility: hidden;
 }
@@ -255,9 +193,6 @@ if not user_id:
     st.warning("Please log in first.")
     st.switch_page("EasyJobsWebApp.py")
 
-# =========================
-# KPI CARDS
-# =========================
 jobs, users, avg_price = get_stats()
 
 col1, col2, col3 = st.columns(3)
@@ -275,7 +210,7 @@ st.subheader("📊 Analytics")
 
 col1, col2 = st.columns(2)
 
-# PRICE DISTRIBUTION
+
 with col1:
     st.write("💰 Price Distribution")
 
@@ -303,9 +238,7 @@ with col2:
 
 st.divider()
 
-# =========================
-# RECENT JOBS
-# =========================
+
 st.subheader("🆕 Recent Jobs")
 
 recent = get_recent_jobs()
@@ -315,18 +248,7 @@ if not recent.empty:
 else:
     st.info("No recent jobs")
 
-# =========================
-# BACK BUTTON
-# =========================
+
 st.divider()
 
-if st.button("⬅️ Back"):
-    history = st.session_state.page_history
-
-    if len(history) > 1:
-        # remove current page
-        history.pop()
-        previous_page = history[-1]
-        st.switch_page(f"{previous_page}.py")
-    else:
-        st.warning("No previous page found.")
+st.button("⬅️ Back")
