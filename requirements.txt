@@ -1,4 +1,4 @@
-flask
+streamlit
 psycopg2-binary
 python-dotenv
-gunicorn
+bcrypt
