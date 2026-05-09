@@ -372,14 +372,16 @@ try:
                 # Image column | Content column | Claim column
                 img_col, content_col, claim_col = st.columns([2, 5, 1.2])
 
-                with img_col:
+               with img_col:
                     if j["image"]:
                         try:
+                            import base64
+                            img_b64 = base64.b64encode(bytes(j["image"])).decode()
                             st.markdown(
                                 f'<img src="data:image/jpeg;base64,{img_b64}" '
                                 f'style="width:100%;height:180px;object-fit:cover;border-radius:8px;">',
                                 unsafe_allow_html=True
-                            )
+            )
                         except:
                             st.markdown("🖼️", unsafe_allow_html=True)
                     else:
