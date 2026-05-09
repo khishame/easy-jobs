@@ -2,16 +2,8 @@ import streamlit as st
 import psycopg2
 import bcrypt
 
-DB_CONFIG = {
-    "dbname": "easy_jobs",
-    "user": "postgres",
-    "password": "Mulweli123?",
-    "host": "localhost",
-    "port": "5432"
-}
-
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 # =========================
 # GET USER (ID + LOGIN DATA)
