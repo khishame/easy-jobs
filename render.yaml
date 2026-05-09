@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: easy-jobs
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python EasyJobsWebApp.py
