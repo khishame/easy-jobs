@@ -2,9 +2,6 @@ import streamlit as st
 import psycopg2
 import bcrypt
 
-# =========================
-# DATABASE CONFIG
-# =========================
 DB_CONFIG = {
     "dbname": "easy_jobs",
     "user": "postgres",
@@ -115,3 +112,4 @@ if st.button("Login"):
 # =========================
 if st.button("Sign Up"):
     st.switch_page("pages/signUp.py")
+    
