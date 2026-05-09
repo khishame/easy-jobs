@@ -23,9 +23,6 @@ def init_db():
 
 init_db()
 
-# =========================
-# GET ALL JOBS
-# =========================
 def get_all_jobs():
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -205,6 +202,66 @@ footer {
 """, unsafe_allow_html=True)
 
 
+def get_all_jobs():
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    j.id,
+                    j.job_name,
+                    j.description,
+                    j.price,
+                    j.image,
+                    j.date_posted,
+                    u.username,
+                    u.email
+                FROM jobs j
+                JOIN users u ON j.user_id = u.id
+                ORDER BY j.date_posted DESC
+            """)
+            return cursor.fetchall()
+
+
+def save_job(user_id, job_id):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO saved_jobs (user_id, job_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+            """, (user_id, job_id))
+        conn.commit()
+
+def unsave_job(user_id, job_id):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM saved_jobs
+                WHERE user_id = %s AND job_id = %s
+            """, (user_id, job_id))
+        conn.commit()
+
+def is_saved(user_id, job_id):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT 1 FROM saved_jobs
+                WHERE user_id = %s AND job_id = %s
+            """, (user_id, job_id))
+            return cursor.fetchone() is not None
+
+def show_image(image):
+    if not image:
+        return
+    try:
+        st.image(io.BytesIO(image), width=250)
+    except:
+        st.warning("⚠️ Image could not be displayed")
+
+st.set_page_config(page_title="Easy Jobs", page_icon=":briefcase:", layout="wide")
+
+
+
 st.title("🛠️ Easy Jobs Marketplace")
 st.write("Connect with skilled workers or find your next opportunity")
 
@@ -221,8 +278,8 @@ with col3:
         st.switch_page("pages/savedJobs.py")
 with col4:
     if st.button("📊 Dashboard", use_container_width=True):
-        st.info("Feature coming soon!")
-with col4:
+        st.switch_page("pages/dashboard.py")
+with col5:
     if st.button("🔔 Notifications", use_container_width=True):
         st.switch_page("pages/notifications.py")
 
@@ -255,7 +312,6 @@ with st.sidebar:
 
     if st.button("Clear Filters", use_container_width=True):
         st.rerun()
-
 
 search_col1, search_col2 = st.columns([5, 1])
 with search_col1:
