@@ -3,24 +3,12 @@ import psycopg2
 import bcrypt
 import re
 from dataclasses import dataclass
-
-# =========================
-# DATABASE CONFIG
-# =========================
-DB_CONFIG = {
-    "dbname": "easy_jobs",
-    "user": "postgres",
-    "password": "Mulweli123?",
-    "host": "localhost",
-    "port": "5432"
-}
+import os
 
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-# =========================
-# INIT DATABASE
-# =========================
+
 def init_db():
     with get_connection() as conn:
         cursor = conn.cursor()
