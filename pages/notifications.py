@@ -1,5 +1,5 @@
 import streamlit as st
-from dp import get_connection, get_notificathttps://github.com/khishame/easy-jobs/blob/main/pages/notifications.pyions, mark_notification_read, mark_all_read, count_unread
+from dp import get_connection, get_notifications, mark_notification_read, mark_all_read, count_unread
 
 def get_user_id(username):
     try:
