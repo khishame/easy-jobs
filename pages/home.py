@@ -375,15 +375,13 @@ try:
                 with img_col:
                     if j["image"]:
                         try:
-                            import base64
-                            img_b64 = base64.b64encode(bytes(j["image"])).decode()
                             st.markdown(
                                 f'<img src="data:image/jpeg;base64,{img_b64}" '
                                 f'style="width:100%;height:180px;object-fit:cover;border-radius:8px;">',
                                 unsafe_allow_html=True
-        )
-    except:
-        st.markdown("🖼️", unsafe_allow_html=True)
+                            )
+                        except:
+                            st.markdown("🖼️", unsafe_allow_html=True)
                     else:
                         st.markdown(
                             '<div style="height:160px;background:#21262d;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">💼</div>',
