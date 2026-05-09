@@ -28,9 +28,6 @@ def init_db():
         """)
         conn.commit()
 
-# =========================
-# USER MODEL
-# =========================
 @dataclass
 class User:
     name: str
@@ -60,9 +57,6 @@ def is_strong_password(password):
         re.search(r"[0-9]", password)
     )
 
-# =========================
-# SAVE USER
-# =========================
 def save_user(user: User):
     try:
         with get_connection() as conn:
@@ -92,6 +86,80 @@ def save_user(user: User):
 
 init_db()
 
+st.markdown("""
+<style>
+
+[data-testid="stAppViewContainer"] {
+    background: radial-gradient(circle at top, #0f172a, #0b1220 60%, #070b14);
+}
+
+/* Page spacing */
+.block-container {
+    padding: 2rem 2.5rem;
+    max-width: 900px;
+}
+html, body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: #e5e7eb;
+}
+
+h1 {
+    color: #38bdf8;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+div[data-testid="stForm"], div[data-testid="stVerticalBlock"] {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    backdrop-filter: blur(10px);
+}
+input, textarea {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    color: white !important;
+    border-radius: 10px !important;
+}
+
+input:focus, textarea:focus {
+    border: 1px solid #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56,189,248,0.2);
+}
+.stButton > button {
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    color: white;
+    border-radius: 12px;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    width: 100%;
+    transition: 0.2s ease;
+}
+
+.stButton > button:hover {
+    filter: brightness(1.15);
+    transform: translateY(-2px);
+}
+
+hr {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.stCaption {
+    color: #9ca3af;
+    text-align: center;
+}
+.stAlert {
+    border-radius: 10px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 st.set_page_config(page_title="Sign Up - Easy Jobs", page_icon=":briefcase:", layout="centered")
 
