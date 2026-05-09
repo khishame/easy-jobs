@@ -251,4 +251,6 @@ else:
 
 st.divider()
 
-st.button("⬅️ Back")
+if st.button("⬅️ Back"):
+    st.switch_page("pages/home.py")
+
