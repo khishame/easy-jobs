@@ -415,8 +415,7 @@ try:
                         unsafe_allow_html=True
                     )
 
-                    # Action buttons: Contact | Details | Save
-                    b1, b2, b3, _ = st.columns([1, 1, 1, 3])
+                    b1, b2, b3 = st.columns(3)
                     with b1:
                         if st.button("📧 Contact", key=f"contact_{j['id']}", use_container_width=True):
                             st.toast(f"📧 {j['email']}")
