@@ -1,5 +1,5 @@
 import streamlit as st
-from dp import get_connection, get_notifications, mark_notification_read, mark_all_read, count_unread
+from dp import get_connection, get_notificathttps://github.com/khishame/easy-jobs/blob/main/pages/notifications.pyions, mark_notification_read, mark_all_read, count_unread
 
 def get_user_id(username):
     try:
@@ -17,11 +17,130 @@ def get_user_id(username):
 
 
 st.set_page_config(page_title="Notifications - Easy Jobs", page_icon="🔔", layout="centered")
+
+st.markdown("""
+<style>
+
+
+
+[data-testid="stAppViewContainer"] {
+    background: #0b1220;
+}
+
+
+
+.block-container {
+    max-width: 850px;
+    margin: auto;
+    padding: 2rem 2rem 3rem 2rem;
+}
+
+
+h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+
+
+
+div[data-testid="stContainer"] {
+    margin-bottom: 10px;
+}
+div[style*="background-color: #f0fdf4"] {
+    background: #111827 !important;
+    border-left: 4px solid #22c55e !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    box-shadow: none;
+    color: #e5e7eb !important;
+}
+
+/* read notification */
+div[style*="background-color: #f9f9f9"] {
+    background: #0f172a !important;
+    border-left: 4px solid rgba(255,255,255,0.15) !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    color: #94a3b8 !important;
+}
+
+html, body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: #e5e7eb;
+}
+
+strong {
+    color: #e5e7eb;
+}
+
+/* timestamp */
+small {
+    color: #64748b !important;
+}
+
+
+.stButton > button {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.10);
+    color: #e5e7eb;
+    border-radius: 10px;
+    padding: 0.45rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: rgba(56,189,248,0.12);
+    border: 1px solid rgba(56,189,248,0.4);
+    transform: translateY(-2px);
+}
+
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    border: none;
+    color: white;
+}
+
+
+.stButton > button:contains("Back") {
+    border: 1px solid rgba(148,163,184,0.3);
+}
+
+
+hr {
+    border-color: rgba(255,255,255,0.06);
+}
+
+
+.stAlert {
+    border-radius: 12px;
+    background: #0f172a;
+    color: #cbd5e1;
+}
+
+
+.element-container {
+    margin-bottom: 0.6rem;
+}
+
+.block-container {
+    gap: 0.6rem;
+}
+
+footer {
+    visibility: hidden;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
 st.title("🔔 Notifications")
 
-# =========================
-# AUTH CHECK
-# =========================
 username = st.session_state.get("username")
 
 if not username:
