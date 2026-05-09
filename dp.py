@@ -7,24 +7,17 @@ import os
 
 load_dotenv()
 
-DB_CONFIG = {
-    "dbname": os.getenv("DB_NAME"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASS"),
-    "host": os.getenv("DB_HOST"),
-    "port": "5432"
-}
-
 EMAIL_CONFIG = {
     "smtp_host": "smtp.gmail.com",
     "smtp_port": 587,
-    "sender_email": "Mulweli@gmail.com",      
-    "sender_password": "Mulweli", 
+    "sender_email": os.getenv("EMAIL"),
+    "sender_password": os.getenv("EMAIL_PASS"),
     "sender_name": "Easy Jobs"
 }
 
 def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
+    database_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(database_url)
 
 # =========================
 # CLAIM A JOB
