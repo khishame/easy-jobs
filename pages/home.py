@@ -84,6 +84,126 @@ def show_image(image):
 
 st.set_page_config(page_title="Easy Jobs", page_icon=":briefcase:", layout="wide")
 
+st.markdown("""
+<style>
+
+
+[data-testid="stAppViewContainer"] {
+    background: #0b1220;
+}
+
+
+.block-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 1.5rem 2rem 3rem 2rem;
+}
+
+h1 {
+    text-align: left;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #38bdf8;
+    margin-bottom: 0.3rem;
+}
+
+/* subtitle */
+p {
+    color: #94a3b8;
+}
+
+
+div[data-testid="column"] {
+    padding: 0.3rem;
+}
+
+.stButton > button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #e5e7eb;
+    border-radius: 8px;
+    padding: 0.4rem;
+    font-weight: 500;
+    transition: 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: rgba(56,189,248,0.08);
+    border: 1px solid rgba(56,189,248,0.4);
+}
+
+
+section[data-testid="stSidebar"] {
+    background: #0a0f1c;
+    border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+
+div[data-testid="stContainer"] {
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: none;
+    transition: 0.2s ease;
+}
+
+div[data-testid="stContainer"]:hover {
+    border: 1px solid rgba(56,189,248,0.4);
+    transform: translateY(-2px);
+}
+
+
+.stButton > button {
+    width: 100%;
+    background: transparent;
+    color: #e5e7eb;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.stButton > button:hover {
+    background: rgba(56,189,248,0.1);
+}
+
+
+input {
+    background-color: #0f172a !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 8px !important;
+    color: #e5e7eb !important;
+}
+
+input:focus {
+    border: 1px solid #38bdf8 !important;
+    box-shadow: none !important;
+}
+
+
+html, body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: #e5e7eb;
+}
+
+.stCaption {
+    color: #9ca3af;
+    font-size: 0.8rem;
+}
+
+hr {
+    border-color: rgba(255,255,255,0.06);
+}
+
+footer {
+    visibility: hidden;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 st.title("🛠️ Easy Jobs Marketplace")
 st.write("Connect with skilled workers or find your next opportunity")
