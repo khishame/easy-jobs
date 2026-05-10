@@ -10,7 +10,7 @@ from dp import (
 )
  
 # ── Config ─────────────────────────────────────────────────────────────────────
-ADMIN_USERNAMES = {"admin"}  # must match EasyJobsWebApp.py
+ADMIN_USERNAMES = {"AmandaU"}  # must match EasyJobsWebApp.py
  
 # ── DB helpers ─────────────────────────────────────────────────────────────────
  
