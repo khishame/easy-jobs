@@ -106,12 +106,15 @@ def update_user_password(user_id, new_password):
         with conn.cursor() as cursor:
             cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, user_id))
         conn.commit()
-
+        
 def delete_user_account(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
-            cursor.execute("DELETE FROM saved_jobs WHERE user_id=%s", (user_id,))
-            cursor.execute("DELETE FROM users WHERE id=%s", (user_id,))
+            # Clear references in jobs before deleting user
+            cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE claimed_by = %s", (user_id,))
+            cursor.execute("DELETE FROM saved_jobs WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
 
 # ── Page config ───────────────────────────────────────────────────────────────
