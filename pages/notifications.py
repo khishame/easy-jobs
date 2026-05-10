@@ -4,7 +4,7 @@ import bcrypt
 import base64
 import io
 from dp import get_connection, get_notifications, mark_notification_read, mark_all_read, count_unread
-
+ 
 def get_user_id(username):
     try:
         with get_connection() as conn:
@@ -15,9 +15,7 @@ def get_user_id(username):
     except Exception as e:
         st.error(f"Error getting user: {e}")
         return None
-
-# ── Profile queries ───────────────────────────────────────────────────────────
-
+ 
 def get_user_profile(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -26,7 +24,7 @@ def get_user_profile(user_id):
                 FROM users WHERE id = %s
             """, (user_id,))
             return cursor.fetchone()
-
+ 
 def update_user_profile(user_id, name, surname, username, email, cellphone1, cellphone2, address):
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -35,21 +33,21 @@ def update_user_profile(user_id, name, surname, username, email, cellphone1, cel
                     cellphone1=%s, cellphone2=%s, address=%s WHERE id=%s
             """, (name, surname, username, email, cellphone1, cellphone2, address, user_id))
         conn.commit()
-
+ 
 def update_profile_picture(user_id, image_bytes):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("UPDATE users SET profile_picture=%s WHERE id=%s",
                            (psycopg2.Binary(image_bytes), user_id))
         conn.commit()
-
+ 
 def update_user_password(user_id, new_password):
     hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, user_id))
         conn.commit()
-
+ 
 def delete_user_account(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -58,48 +56,32 @@ def delete_user_account(user_id):
             cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
-
-# ── Page config ───────────────────────────────────────────────────────────────
-
+ 
 st.set_page_config(page_title="Notifications - Easy Jobs", page_icon="🔔", layout="centered")
-
+ 
 st.markdown("<style>[data-testid='stSidebarNav'],[data-testid='stSidebar']{display:none!important;}</style>", unsafe_allow_html=True)
-
+ 
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 * { font-family: 'DM Sans', sans-serif; }
-
+ 
 [data-testid="stAppViewContainer"] { background: #0b1220; }
-
+ 
 .block-container {
     max-width: 850px;
     margin: auto;
     padding: 1.2rem 2rem 3rem 2rem;
 }
-
+ 
 h1 { text-align: center; font-size: 2rem; font-weight: 800; color: #38bdf8; }
-
+ 
 div[data-testid="stContainer"] { margin-bottom: 10px; }
-
-div[style*="background-color: #f0fdf4"] {
-    background: #111827 !important;
-    border-left: 4px solid #22c55e !important;
-    border-radius: 12px !important;
-    padding: 14px !important;
-    box-shadow: none; color: #e5e7eb !important;
-}
-div[style*="background-color: #f9f9f9"] {
-    background: #0f172a !important;
-    border-left: 4px solid rgba(255,255,255,0.15) !important;
-    border-radius: 12px !important;
-    padding: 14px !important; color: #94a3b8 !important;
-}
-
+ 
 html, body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #e5e7eb; }
 strong { color: #e5e7eb; }
 small { color: #64748b !important; }
-
+ 
 .stButton > button {
     width: 100%; background: transparent;
     border: 1px solid rgba(255,255,255,0.10); color: #e5e7eb;
@@ -112,12 +94,34 @@ small { color: #64748b !important; }
 .stButton > button[kind="primary"] {
     background: linear-gradient(90deg, #2563eb, #06b6d4); border: none; color: white;
 }
-
+ 
 hr { border-color: rgba(255,255,255,0.06); }
 .stAlert { border-radius: 12px; background: #0f172a; color: #cbd5e1; }
 .element-container { margin-bottom: 0.6rem; }
 footer { visibility: hidden; }
-
+ 
+/* ── Notification cards ── */
+.notif-unread {
+    background: #0f2a1e;
+    border-left: 4px solid #22c55e;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+}
+.notif-unread strong { color: #bbf7d0; }
+.notif-unread small  { color: #4ade80 !important; }
+ 
+.notif-read {
+    background: #131c2e;
+    border-left: 4px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+}
+.notif-read strong { color: #94a3b8; }
+.notif-read small  { color: #475569 !important; }
+ 
+/* ── Profile panel ── */
 .profile-panel {
     background: #161b22; border: 1px solid #30363d;
     border-radius: 14px; margin-bottom: 20px; overflow: hidden;
@@ -140,22 +144,18 @@ footer { visibility: hidden; }
 .panel-email { color: #8b949e; font-size: 0.78rem; margin: 0; }
 </style>
 """, unsafe_allow_html=True)
-
-# ── Session state ─────────────────────────────────────────────────────────────
-
+ 
 user_id = st.session_state.get("user_id")
-
+ 
 if "show_profile_panel" not in st.session_state:
     st.session_state.show_profile_panel = False
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
-
-# ── Load profile ──────────────────────────────────────────────────────────────
-
+ 
 profile    = None
 initials   = "U"
 avatar_src = None
-
+ 
 if user_id:
     profile = get_user_profile(user_id)
     if profile:
@@ -166,17 +166,15 @@ if user_id:
         ) or "U"
         if p_pic:
             avatar_src = "data:image/jpeg;base64," + base64.b64encode(bytes(p_pic)).decode()
-
-# ── Top navbar ────────────────────────────────────────────────────────────────
-
+ 
 nav_l, nav_r = st.columns([9, 1])
-
+ 
 with nav_l:
     st.markdown(
         '<p style="color:#38bdf8;font-size:1.15rem;font-weight:700;margin:6px 0 0 0;">🔔 Notifications</p>',
         unsafe_allow_html=True
     )
-
+ 
 with nav_r:
     if user_id:
         toggle_label = "✕ Close" if st.session_state.show_profile_panel else "👤 Profile"
@@ -187,14 +185,12 @@ with nav_r:
     else:
         if st.button("🔑 Login", use_container_width=True):
             st.switch_page("EasyJobsWebApp.py")
-
-# ── Inline profile panel ──────────────────────────────────────────────────────
-
+ 
 if st.session_state.show_profile_panel and user_id and profile:
     p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = profile
-
+ 
     avatar_inner = f'<img src="{avatar_src}" />' if avatar_src else f'<span>{initials}</span>'
-
+ 
     st.markdown(f"""
     <div class="profile-panel">
         <div class="profile-panel-header">
@@ -207,7 +203,7 @@ if st.session_state.show_profile_panel and user_id and profile:
         </div>
     </div>
     """, unsafe_allow_html=True)
-
+ 
     with st.expander("📷 Change Profile Picture", expanded=False):
         new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
         if new_pic:
@@ -221,7 +217,7 @@ if st.session_state.show_profile_panel and user_id and profile:
                     update_profile_picture(user_id, pic_bytes)
                     st.success("✅ Profile picture updated!")
                     st.rerun()
-
+ 
     st.markdown("### ✏️ Edit Profile")
     c1, c2 = st.columns(2)
     with c1:
@@ -233,14 +229,14 @@ if st.session_state.show_profile_panel and user_id and profile:
         new_surname  = st.text_input("Last Name",     value=p_surname  or "", key="pf_surname")
         new_email    = st.text_input("Email",         value=p_email    or "", key="pf_email")
         new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
-
+ 
     st.markdown("#### 🔒 Change Password")
     pw1, pw2 = st.columns(2)
     with pw1:
         new_pw  = st.text_input("New Password",     type="password", key="pf_pw",  placeholder="Leave blank to keep current")
     with pw2:
         conf_pw = st.text_input("Confirm Password", type="password", key="pf_cpw", placeholder="Repeat new password")
-
+ 
     st.markdown("")
     ba, bb, bc = st.columns([2, 1, 1])
     with ba:
@@ -263,7 +259,7 @@ if st.session_state.show_profile_panel and user_id and profile:
     with bc:
         if st.button("🗑️ Delete Account", use_container_width=True, key="pf_del_open"):
             st.session_state.confirm_delete = True
-
+ 
     if st.session_state.confirm_delete:
         st.warning("⚠️ This will **permanently delete** your account and all your data.")
         confirm_del = st.text_input("Type DELETE to confirm", key="pf_del_confirm")
@@ -276,32 +272,30 @@ if st.session_state.show_profile_panel and user_id and profile:
                 st.switch_page("EasyJobsWebApp.py")
             else:
                 st.error("Type DELETE (all caps) to confirm.")
-
+ 
     st.divider()
-
-# ── Main page ─────────────────────────────────────────────────────────────────
-
+ 
 username = st.session_state.get("username")
-
+ 
 if not username:
     st.warning("Please log in first.")
     st.switch_page("EasyJobsWebApp.py")
 else:
     if not user_id:
         user_id = get_user_id(username)
-
+ 
     if not user_id:
         st.error("Could not find your account. Please log in again.")
         st.stop()
-
+ 
     if st.button("← Back to Marketplace"):
         st.switch_page("pages/home.py")
-
+ 
     st.divider()
-
+ 
     notifications = get_notifications(user_id)
     unread_count  = count_unread(user_id)
-
+ 
     if not notifications:
         st.info("🔕 No notifications yet. You'll be notified when someone claims your job.")
     else:
@@ -316,24 +310,25 @@ else:
                 if st.button("✅ Mark all as read", use_container_width=True):
                     mark_all_read(user_id)
                     st.rerun()
-
+ 
         st.divider()
-
+ 
         for notif in notifications:
             notif_id, job_id, message, is_read, created_at = notif
-
+            time_str = created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Unknown time'
+ 
             if not is_read:
-                bg_style = "background-color: #f0fdf4; border-left: 4px solid #2d6a4f; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px;"
+                css_class = "notif-unread"
                 badge = "🟢"
             else:
-                bg_style = "background-color: #f9f9f9; border-left: 4px solid #ccc; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px;"
+                css_class = "notif-read"
                 badge = "⚪"
-
+ 
             with st.container():
                 st.markdown(
-                    f"""<div style="{bg_style}">
+                    f"""<div class="{css_class}">
                         <strong>{badge} {message}</strong><br>
-                        <small style="color: #888;">📅 {created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Unknown time'}</small>
+                        <small>📅 {time_str}</small>
                     </div>""",
                     unsafe_allow_html=True
                 )
@@ -342,6 +337,6 @@ else:
                         mark_notification_read(notif_id)
                         st.rerun()
                 st.write("")
-
+ 
     st.divider()
     st.caption("Easy Jobs © 2026 | Connecting skilled workers with opportunities")
