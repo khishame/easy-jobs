@@ -120,7 +120,7 @@ def delete_user_account(user_id):
 # ── Page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(page_title="Easy Jobs", page_icon="💼", layout="wide")
-
+st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
