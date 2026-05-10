@@ -307,7 +307,7 @@ with st.sidebar:
     else:
         st.info("🔒 Log in to access your profile.")
         if st.button("🔑 Login / Register", use_container_width=True):
-            st.switch_page("pages/login.py")
+            st.switch_page("pages/signUp.py")
 
     st.divider()
 
