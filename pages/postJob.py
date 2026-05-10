@@ -77,7 +77,7 @@ def is_valid_price(value):
 
 st.set_page_config(page_title="Post Jobs", page_icon="📌", layout="centered")
 
-st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
+st.markdown("<style>[data-testid='stSidebarNav'] {display: none;}</style>", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
