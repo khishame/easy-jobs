@@ -3,7 +3,7 @@ import psycopg2
 import bcrypt
 import os
  
-ADMIN_USERNAMES = {"admin"}  # must match admin.py
+ADMIN_USERNAMES = {"AmandaU"}  # must match admin.py
  
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
