@@ -3,7 +3,7 @@ import psycopg2
 import bcrypt
 import os
  
-ADMIN_USERNAMES = {"AmandaU"}  # must match admin.py
+ADMIN_USERNAMES = {"AmandaU"}  # ✅ Your admin username
  
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
@@ -37,80 +37,34 @@ def verify_user(username_or_email: str, password: str):
     except Exception as e:
         st.error(f"Database error: {e}")
         return False, None, None
- 
+
+# 🔥 SESSION STATE - Add is_admin flag
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
 if "username" not in st.session_state:
     st.session_state["username"] = None
+if "is_admin" not in st.session_state:
+    st.session_state["is_admin"] = False
  
 st.set_page_config(page_title="Easy Jobs", page_icon=":briefcase:", layout="centered")
 st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 st.markdown("""
 <style>
- 
 [data-testid="stAppViewContainer"] { background: #0b1220; }
- 
-.block-container {
-    max-width: 850px;
-    margin: auto;
-    padding-top: 3rem;
-    padding-bottom: 3rem;
-}
- 
-h1 {
-    text-align: center;
-    font-size: 2rem;
-    font-weight: 800;
-    color: #38bdf8;
-}
- 
+.block-container { max-width: 850px; margin: auto; padding-top: 3rem; padding-bottom: 3rem; }
+h1 { text-align: center; font-size: 2rem; font-weight: 800; color: #38bdf8; }
 h3, h2, p { text-align: center; color: #94a3b8; }
- 
-input {
-    background-color: #0f172a !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    border-radius: 10px !important;
-    padding: 0.6rem !important;
-    color: #e5e7eb !important;
-}
- 
-input:focus {
-    border: 1px solid #38bdf8 !important;
-    box-shadow: 0 0 12px rgba(56,189,248,0.25) !important;
-}
- 
-.stButton > button {
-    width: 140px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.12);
-    color: #e5e7eb;
-    border-radius: 10px;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
- 
-.stButton > button:hover {
-    background: rgba(56,189,248,0.12);
-    border: 1px solid rgba(56,189,248,0.5);
-    transform: translateY(-2px);
-}
- 
-.stButton > button[kind="primary"] {
-    background: linear-gradient(90deg, #2563eb, #06b6d4);
-    border: none;
-    color: white;
-}
- 
+input { background-color: #0f172a !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 10px !important; padding: 0.6rem !important; color: #e5e7eb !important; }
+input:focus { border: 1px solid #38bdf8 !important; box-shadow: 0 0 12px rgba(56,189,248,0.25) !important; }
+.stButton > button { width: 140px; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: #e5e7eb; border-radius: 10px; padding: 0.25rem 0.6rem; font-size: 0.85rem; font-weight: 600; transition: all 0.2s ease; }
+.stButton > button:hover { background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.5); transform: translateY(-2px); }
+.stButton > button[kind="primary"] { background: linear-gradient(90deg, #2563eb, #06b6d4); border: none; color: white; }
 .stButton > button[kind="primary"]:hover { filter: brightness(1.1); }
- 
 div[data-testid="column"] { padding: 0.5rem; }
 .stAlert { border-radius: 10px; }
 footer { visibility: hidden; }
 .element-container { margin-bottom: 0.8rem; }
 .block-container { gap: 0.6rem; }
- 
 </style>
 """, unsafe_allow_html=True)
  
@@ -124,30 +78,35 @@ with col1:
 with col2:
     password_input = st.text_input("Password", type="password")
  
-btn_col1, btn_col2, btn_col3, btn_col4 = st.columns([1, 1, 1, 1])
+btn_col1, btn_col2 = st.columns(2)
+login_clicked  = btn_col1.button("🔑 Login", use_container_width=True)
+signup_clicked = btn_col2.button("📝 Sign Up", use_container_width=True)
  
-login_clicked  = btn_col1.button("Login")
-signup_clicked = btn_col2.button("Sign Up")
- 
+# 🔥 FIXED LOGIN - REPLACES YOUR OLD LOGIN SECTION
 if login_clicked:
-    user_input     = user_input.strip()
+    user_input = user_input.strip()
     password_input = password_input.strip()
- 
+
     if not user_input or not password_input:
         st.error("Please fill in all fields")
     else:
-        # Block admin from logging in through the normal login page
-        if user_input.lower() in {u.lower() for u in ADMIN_USERNAMES}:
-            st.error("⛔ Admin accounts cannot log in from this page.")
-        else:
-            success, user_id, username = verify_user(user_input, password_input)
-            if success:
-                st.success("Login successful")
-                st.session_state["user_id"]  = user_id
-                st.session_state["username"] = username
-                st.switch_page("pages/home.py")
+        success, user_id, username = verify_user(user_input, password_input)
+        
+        if success:
+            st.session_state["user_id"] = user_id
+            st.session_state["username"] = username
+            
+            # 🔥 ADMIN AUTO-REDIRECT
+            if username.lower() in {u.lower() for u in ADMIN_USERNAMES}:
+                st.session_state["is_admin"] = True
+                st.success(f"👑 **Admin login successful!** Welcome @{username}")
+                st.switch_page("AdminPanel.py")  # ← ADMIN GOES HERE
             else:
-                st.error("Invalid username/email or password")
- 
+                st.session_state["is_admin"] = False
+                st.success("✅ Login successful!")
+                st.switch_page("pages/home.py")  # ← USERS GO HERE
+        else:
+            st.error("❌ Invalid username/email or password")
+
 if signup_clicked:
     st.switch_page("pages/signUp.py")
