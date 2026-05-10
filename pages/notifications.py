@@ -17,7 +17,7 @@ def get_user_id(username):
 
 
 st.set_page_config(page_title="Notifications - Easy Jobs", page_icon="🔔", layout="centered")
-
+st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 st.markdown("""
 <style>
 
