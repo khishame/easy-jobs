@@ -107,7 +107,7 @@ def delete_user_account(user_id):
 
 st.set_page_config(page_title="My Jobs - Easy Jobs", page_icon="📁", layout="centered")
 
-st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
+st.markdown("<style>[data-testid='stSidebarNav'] {display: none;}</style>", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
