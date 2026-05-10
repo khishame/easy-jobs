@@ -301,13 +301,13 @@ with st.sidebar:
                         for key in list(st.session_state.keys()):
                             del st.session_state[key]
                         st.success("Account deleted.")
-                        st.switch_page("pages/login.py")
+                        st.switch_page("EasyJobsWebApp.py")
                     else:
                         st.error("Type DELETE (all caps) to confirm.")
     else:
         st.info("🔒 Log in to access your profile.")
         if st.button("🔑 Login / Register", use_container_width=True):
-            st.switch_page("pages/signUp.py")
+            st.switch_page("EasyJobsWebApp.py")
 
     st.divider()
 
