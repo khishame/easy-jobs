@@ -99,7 +99,7 @@ input:focus {
     border: 1px solid rgba(255,255,255,0.12);
     color: #e5e7eb;
     border-radius: 10px;
-    padding: 0.55rem;
+    padding: 0.3rem;
     font-weight: 600;
     transition: all 0.2s ease;
 }
