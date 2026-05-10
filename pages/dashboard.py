@@ -1,6 +1,8 @@
 import streamlit as st
 import psycopg2
 import bcrypt
+import base64
+import io
 import pandas as pd
 import os
 
@@ -72,7 +74,7 @@ def get_user_profile(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT name, surname, username, email, cellphone1, cellphone2, address
+                SELECT name, surname, username, email, cellphone1, cellphone2, address, profile_picture
                 FROM users WHERE id = %s
             """, (user_id,))
             return cursor.fetchone()
@@ -93,6 +95,13 @@ def update_user_password(user_id, new_password):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, user_id))
+        conn.commit()
+
+def update_profile_picture(user_id, image_bytes):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE users SET profile_picture=%s WHERE id=%s",
+                           (psycopg2.Binary(image_bytes), user_id))
         conn.commit()
 
 def delete_user_account(user_id):
@@ -175,7 +184,9 @@ footer { visibility: hidden; }
     display: flex; align-items: center; justify-content: center;
     font-size: 22px; font-weight: 700; color: #fff;
     margin: 0 auto 10px auto;
+    overflow: hidden;
 }
+.avatar-circle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .profile-username { color: #e6edf3; font-size: 1rem; font-weight: 700; margin: 0; }
 .profile-email { color: #8b949e; font-size: 0.78rem; margin: 2px 0 0 0; }
 </style>
@@ -196,15 +207,22 @@ with st.sidebar:
     if user_id:
         profile = get_user_profile(user_id)
         if profile:
-            p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address = profile
+            p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = profile
             initials = (
                 (p_name[0].upper() if p_name else "") +
                 (p_surname[0].upper() if p_surname else "")
             ) or "U"
 
+            # Build avatar: photo if available, else initials
+            if p_pic:
+                avatar_src = "data:image/jpeg;base64," + base64.b64encode(bytes(p_pic)).decode()
+                avatar_inner = f'<img src="{avatar_src}" />'
+            else:
+                avatar_inner = f'<span>{initials}</span>'
+
             st.markdown(f"""
             <div class="profile-card">
-                <div class="avatar-circle">{initials}</div>
+                <div class="avatar-circle">{avatar_inner}</div>
                 <p class="profile-username">{p_name or ""} {p_surname or ""}</p>
                 <p class="profile-email">{p_email or ""}</p>
             </div>
@@ -217,6 +235,21 @@ with st.sidebar:
 
         if st.session_state.show_profile_panel and profile:
             st.divider()
+
+            with st.expander("📷 Change Profile Picture", expanded=False):
+                new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
+                if new_pic:
+                    pic_bytes = new_pic.read()
+                    prev_col, btn_col = st.columns([1, 3])
+                    with prev_col:
+                        st.image(io.BytesIO(pic_bytes), width=56)
+                    with btn_col:
+                        st.write("")
+                        if st.button("💾 Save Photo", key="save_pic"):
+                            update_profile_picture(user_id, pic_bytes)
+                            st.success("✅ Profile picture updated!")
+                            st.rerun()
+
             st.markdown("### ✏️ Edit Profile")
 
             new_name     = st.text_input("First Name",    value=p_name     or "", key="pf_name")
