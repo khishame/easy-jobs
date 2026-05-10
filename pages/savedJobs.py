@@ -71,6 +71,7 @@ def show_image(image):
         st.image(io.BytesIO(image), width=250)
     except:
         st.warning("⚠️ Image could not be displayed")
+        st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 st.markdown("""
 <style>
 
