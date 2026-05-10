@@ -3,6 +3,8 @@ import psycopg2
 import bcrypt
 import os
  
+ADMIN_USERNAMES = {"admin"}  # must match admin.py
+ 
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
  
@@ -16,7 +18,6 @@ def get_user(username_or_email):
                     WHERE LOWER(username) = LOWER(%s)
                        OR LOWER(email) = LOWER(%s)
                 """, (username_or_email, username_or_email))
-                
                 return cursor.fetchone()
     except Exception as e:
         st.error(f"Database error: {e}")
@@ -25,27 +26,20 @@ def get_user(username_or_email):
 def verify_user(username_or_email: str, password: str):
     try:
         result = get_user(username_or_email)
- 
         if not result:
             return False, None, None
- 
         user_id, username, stored_hash = result
- 
         if isinstance(stored_hash, str):
             stored_hash = stored_hash.encode()
- 
         if bcrypt.checkpw(password.encode(), stored_hash):
             return True, user_id, username
- 
         return False, None, None
- 
     except Exception as e:
         st.error(f"Database error: {e}")
         return False, None, None
  
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
- 
 if "username" not in st.session_state:
     st.session_state["username"] = None
  
@@ -54,9 +48,7 @@ st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_
 st.markdown("""
 <style>
  
-[data-testid="stAppViewContainer"] {
-    background: #0b1220;
-}
+[data-testid="stAppViewContainer"] { background: #0b1220; }
  
 .block-container {
     max-width: 850px;
@@ -72,10 +64,7 @@ h1 {
     color: #38bdf8;
 }
  
-h3, h2, p {
-    text-align: center;
-    color: #94a3b8;
-}
+h3, h2, p { text-align: center; color: #94a3b8; }
  
 input {
     background-color: #0f172a !important;
@@ -114,29 +103,13 @@ input:focus {
     color: white;
 }
  
-.stButton > button[kind="primary"]:hover {
-    filter: brightness(1.1);
-}
+.stButton > button[kind="primary"]:hover { filter: brightness(1.1); }
  
-div[data-testid="column"] {
-    padding: 0.5rem;
-}
- 
-.stAlert {
-    border-radius: 10px;
-}
- 
-footer {
-    visibility: hidden;
-}
- 
-.element-container {
-    margin-bottom: 0.8rem;
-}
- 
-.block-container {
-    gap: 0.6rem;
-}
+div[data-testid="column"] { padding: 0.5rem; }
+.stAlert { border-radius: 10px; }
+footer { visibility: hidden; }
+.element-container { margin-bottom: 0.8rem; }
+.block-container { gap: 0.6rem; }
  
 </style>
 """, unsafe_allow_html=True)
@@ -146,40 +119,35 @@ st.title("Sell your skills or hire a skilled worker 🔍")
 st.write("Easy Jobs is a platform where skilled workers can offer services and clients can hire them.")
  
 col1, col2 = st.columns(2)
- 
 with col1:
     user_input = st.text_input("Username or Email", placeholder="Enter here...")
- 
 with col2:
     password_input = st.text_input("Password", type="password")
  
-# =========================
-# LOGIN & SIGN UP BUTTONS SIDE BY SIDE (smaller)
-# =========================
 btn_col1, btn_col2, btn_col3, btn_col4 = st.columns([1, 1, 1, 1])
  
-login_clicked = btn_col1.button("Login")
+login_clicked  = btn_col1.button("Login")
 signup_clicked = btn_col2.button("Sign Up")
  
 if login_clicked:
-    user_input = user_input.strip()
+    user_input     = user_input.strip()
     password_input = password_input.strip()
  
     if not user_input or not password_input:
         st.error("Please fill in all fields")
     else:
-        success, user_id, username = verify_user(user_input, password_input)
- 
-        if success:
-            st.success("Login successful")
- 
-            st.session_state["user_id"] = user_id
-            st.session_state["username"] = username
- 
-            st.switch_page("pages/home.py")
- 
+        # Block admin from logging in through the normal login page
+        if user_input.lower() in {u.lower() for u in ADMIN_USERNAMES}:
+            st.error("⛔ Admin accounts cannot log in from this page.")
         else:
-            st.error("Invalid username/email or password")
+            success, user_id, username = verify_user(user_input, password_input)
+            if success:
+                st.success("Login successful")
+                st.session_state["user_id"]  = user_id
+                st.session_state["username"] = username
+                st.switch_page("pages/home.py")
+            else:
+                st.error("Invalid username/email or password")
  
 if signup_clicked:
     st.switch_page("pages/signUp.py")
