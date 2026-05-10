@@ -294,6 +294,7 @@ if st.button("Post Job"):
 
         except Exception as e:
             st.error(f"Error: {e}")
-
+if st.button("Go Home"):
+            st.switch_page("pages/home.py")
 st.divider()
 st.caption("Easy Jobs © 2026 | Connecting skilled workers with opportunities")
