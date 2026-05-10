@@ -71,7 +71,7 @@ def get_recent_jobs():
 
 
 st.set_page_config(page_title="Dashboard", layout="wide")
-
+st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 st.markdown("""
 <style>
 
