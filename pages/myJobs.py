@@ -55,6 +55,8 @@ def delete_job(job_id):
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM saved_jobs WHERE job_id = %s", (job_id,))
+                cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE id = %s", (job_id,))
                 cursor.execute("DELETE FROM jobs WHERE id = %s", (job_id,))
             conn.commit()
         return True
@@ -64,6 +66,8 @@ def delete_job(job_id):
 
 
 st.set_page_config(page_title="My Jobs - Easy Jobs", page_icon="📁", layout="centered")
+
+st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
