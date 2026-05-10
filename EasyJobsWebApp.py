@@ -54,7 +54,6 @@ st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_
 st.markdown("""
 <style>
  
- 
 [data-testid="stAppViewContainer"] {
     background: #0b1220;
 }
@@ -65,7 +64,6 @@ st.markdown("""
     padding-top: 3rem;
     padding-bottom: 3rem;
 }
- 
  
 h1 {
     text-align: center;
@@ -92,14 +90,14 @@ input:focus {
     box-shadow: 0 0 12px rgba(56,189,248,0.25) !important;
 }
  
- 
 .stButton > button {
-    width: 100%;
+    width: 140px;
     background: transparent;
     border: 1px solid rgba(255,255,255,0.12);
     color: #e5e7eb;
     border-radius: 10px;
-    padding: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
     font-weight: 600;
     transition: all 0.2s ease;
 }
@@ -120,16 +118,13 @@ input:focus {
     filter: brightness(1.1);
 }
  
- 
 div[data-testid="column"] {
     padding: 0.5rem;
 }
  
- 
 .stAlert {
     border-radius: 10px;
 }
- 
  
 footer {
     visibility: hidden;
@@ -159,12 +154,12 @@ with col2:
     password_input = st.text_input("Password", type="password")
  
 # =========================
-# LOGIN & SIGN UP BUTTONS SIDE BY SIDE
+# LOGIN & SIGN UP BUTTONS SIDE BY SIDE (smaller)
 # =========================
-btn_col1, btn_col2 = st.columns(2)
+btn_col1, btn_col2, btn_col3, btn_col4 = st.columns([1, 1, 1, 1])
  
-login_clicked = btn_col1.button("Login", use_container_width=True)
-signup_clicked = btn_col2.button("Sign Up", use_container_width=True)
+login_clicked = btn_col1.button("Login")
+signup_clicked = btn_col2.button("Sign Up")
  
 if login_clicked:
     user_input = user_input.strip()
@@ -181,7 +176,6 @@ if login_clicked:
             st.session_state["user_id"] = user_id
             st.session_state["username"] = username
  
-            # ✅ redirect to home page
             st.switch_page("pages/home.py")
  
         else:
