@@ -161,30 +161,30 @@ with col2:
 # =========================
 # LOGIN BUTTON
 # =========================
-if st.button("Login"):
-    user_input = user_input.strip()
-    password_input = password_input.strip()
-
-    if not user_input or not password_input:
-        st.error("Please fill in all fields")
-    else:
-        success, user_id, username = verify_user(user_input, password_input)
-
-        if success:
-            st.success("Login successful")
-
-            st.session_state["user_id"] = user_id
-            st.session_state["username"] = username
-
-            # ✅ redirect to home page
-            st.switch_page("pages/home.py")
-
+btn_col1, btn_col2 = st.columns(2)
+ 
+with btn_col1:
+    if st.button("Login", use_container_width=True):
+        user_input = user_input.strip()
+        password_input = password_input.strip()
+ 
+        if not user_input or not password_input:
+            st.error("Please fill in all fields")
         else:
-            st.error("Invalid username/email or password")
-
-# =========================
-# SIGN UP BUTTON
-# =========================
-if st.button("Sign Up"):
-    st.switch_page("pages/signUp.py")
-    
+            success, user_id, username = verify_user(user_input, password_input)
+ 
+            if success:
+                st.success("Login successful")
+ 
+                st.session_state["user_id"] = user_id
+                st.session_state["username"] = username
+ 
+                # ✅ redirect to home page
+                st.switch_page("pages/home.py")
+ 
+            else:
+                st.error("Invalid username/email or password")
+ 
+with btn_col2:
+    if st.button("Sign Up", use_container_width=True):
+        st.switch_page("pages/signUp.py")
