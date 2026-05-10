@@ -86,7 +86,7 @@ def save_user(user: User):
 
 init_db()
 
-st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
+st.markdown("<style>[data-testid='stSidebarNav'] {display: none;}</style>", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
