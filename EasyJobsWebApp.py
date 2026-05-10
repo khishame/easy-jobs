@@ -22,9 +22,6 @@ def get_user(username_or_email):
         st.error(f"Database error: {e}")
         return None
 
-# =========================
-# VERIFY USER
-# =========================
 def verify_user(username_or_email: str, password: str):
     try:
         result = get_user(username_or_email)
@@ -34,7 +31,6 @@ def verify_user(username_or_email: str, password: str):
 
         user_id, username, stored_hash = result
 
-        # 🔥 CRITICAL FIX: handle both TEXT and BYTEA
         if isinstance(stored_hash, str):
             stored_hash = stored_hash.encode()
 
@@ -47,26 +43,17 @@ def verify_user(username_or_email: str, password: str):
         st.error(f"Database error: {e}")
         return False, None, None
 
-# =========================
-# SESSION STATE INIT
-# =========================
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
 
 if "username" not in st.session_state:
     st.session_state["username"] = None
 
-# =========================
-# UI
-# =========================
 st.set_page_config(page_title="Easy Jobs", page_icon=":briefcase:", layout="centered")
-
+st.markdown("<style>[data-testid='stSidebar'] {display: none;}</style>", unsafe_allow_html=True)
 st.markdown("""
 <style>
 
-/* =========================
-   GLOBAL BACKGROUND (LINKEDIN DARK MODE STYLE)
-========================= */
 
 [data-testid="stAppViewContainer"] {
     background: #0b1220;
@@ -79,9 +66,6 @@ st.markdown("""
     padding-bottom: 3rem;
 }
 
-/* =========================
-   MAIN HERO TEXT (LOGIN HEADER)
-========================= */
 
 h1 {
     text-align: center;
@@ -94,10 +78,6 @@ h3, h2, p {
     text-align: center;
     color: #94a3b8;
 }
-
-/* =========================
-   INPUT FIELDS (MODERN AUTH STYLE)
-========================= */
 
 input {
     background-color: #0f172a !important;
@@ -112,9 +92,6 @@ input:focus {
     box-shadow: 0 0 12px rgba(56,189,248,0.25) !important;
 }
 
-/* =========================
-   BUTTONS (LINKEDIN STYLE CTA)
-========================= */
 
 .stButton > button {
     width: 100%;
@@ -133,7 +110,6 @@ input:focus {
     transform: translateY(-2px);
 }
 
-/* LOGIN BUTTON SPECIAL EMPHASIS */
 .stButton > button[kind="primary"] {
     background: linear-gradient(90deg, #2563eb, #06b6d4);
     border: none;
@@ -144,17 +120,11 @@ input:focus {
     filter: brightness(1.1);
 }
 
-/* =========================
-   TWO COLUMN ALIGNMENT FIX
-========================= */
 
 div[data-testid="column"] {
     padding: 0.5rem;
 }
 
-/* =========================
-   SUCCESS / ERROR MESSAGES
-========================= */
 
 .stAlert {
     border-radius: 10px;
@@ -169,7 +139,6 @@ footer {
     margin-bottom: 0.8rem;
 }
 
-/* subtle spacing */
 .block-container {
     gap: 0.6rem;
 }
