@@ -1,6 +1,8 @@
 import streamlit as st
 import psycopg2
 import bcrypt
+import base64
+import io
 import os
 
 def get_connection():
@@ -32,7 +34,7 @@ def get_user_profile(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT name, surname, username, email, cellphone1, cellphone2, address
+                SELECT name, surname, username, email, cellphone1, cellphone2, address, profile_picture
                 FROM users WHERE id = %s
             """, (user_id,))
             return cursor.fetchone()
@@ -41,11 +43,16 @@ def update_user_profile(user_id, name, surname, username, email, cellphone1, cel
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
-                UPDATE users
-                SET name=%s, surname=%s, username=%s, email=%s,
-                    cellphone1=%s, cellphone2=%s, address=%s
-                WHERE id=%s
+                UPDATE users SET name=%s, surname=%s, username=%s, email=%s,
+                    cellphone1=%s, cellphone2=%s, address=%s WHERE id=%s
             """, (name, surname, username, email, cellphone1, cellphone2, address, user_id))
+        conn.commit()
+
+def update_profile_picture(user_id, image_bytes):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE users SET profile_picture=%s WHERE id=%s",
+                           (psycopg2.Binary(image_bytes), user_id))
         conn.commit()
 
 def update_user_password(user_id, new_password):
@@ -77,7 +84,7 @@ def is_valid_price(value):
 
 st.set_page_config(page_title="Post Jobs", page_icon="📌", layout="centered")
 
-st.markdown("<style>[data-testid='stSidebarNav'] {display: none;}</style>", unsafe_allow_html=True)
+st.markdown("<style>[data-testid='stSidebarNav'],[data-testid='stSidebar']{display:none!important;}</style>", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
@@ -89,7 +96,7 @@ st.markdown("""
 }
 .block-container {
     max-width: 1150px;
-    padding: 2rem 1.5rem;
+    padding: 1.2rem 1.5rem;
     margin: auto;
 }
 html, body { font-family: "Segoe UI", Roboto, Arial, sans-serif; color: #e5e7eb; }
@@ -131,24 +138,36 @@ input:focus, textarea:focus {
 }
 hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); }
 .stCaption { color: #9ca3af; font-size: 0.85rem; }
-a { color: #38bdf8; text-decoration: none; }
-a:hover { text-decoration: underline; }
 footer { visibility: hidden; }
 
-.profile-card {
-    background: #161b22; border: 1px solid #30363d;
-    border-radius: 10px; padding: 16px;
-    margin-bottom: 16px; text-align: center;
+.profile-panel {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    overflow: hidden;
 }
-.avatar-circle {
-    width: 64px; height: 64px; border-radius: 50%;
-    background: #1f6feb; border: 3px solid #388bfd;
+.profile-panel-header {
+    background: linear-gradient(135deg, #1a2d4a, #0d1117);
+    border-bottom: 1px solid #30363d;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.panel-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: #1f6feb;
+    border: 3px solid #388bfd;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: 700; color: #fff;
-    margin: 0 auto 10px auto;
+    font-size: 26px; font-weight: 700; color: #fff;
+    overflow: hidden; flex-shrink: 0;
 }
-.profile-username { color: #e6edf3; font-size: 1rem; font-weight: 700; margin: 0; }
-.profile-email { color: #8b949e; font-size: 0.78rem; margin: 2px 0 0 0; }
+.panel-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+.panel-name  { color: #e6edf3; font-size: 1.1rem; font-weight: 700; margin: 0 0 2px 0; }
+.panel-uname { color: #58a6ff; font-size: 0.82rem; margin: 0 0 2px 0; }
+.panel-email { color: #8b949e; font-size: 0.78rem; margin: 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -158,86 +177,137 @@ user_id = st.session_state.get("user_id")
 
 if "show_profile_panel" not in st.session_state:
     st.session_state.show_profile_panel = False
-if "profile_saved" not in st.session_state:
-    st.session_state.profile_saved = False
+if "confirm_delete" not in st.session_state:
+    st.session_state.confirm_delete = False
 
-# ── Sidebar profile panel ─────────────────────────────────────────────────────
+# ── Load profile ──────────────────────────────────────────────────────────────
 
-with st.sidebar:
+profile    = None
+initials   = "U"
+avatar_src = None
+
+if user_id:
+    profile = get_user_profile(user_id)
+    if profile:
+        p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = profile
+        initials = (
+            (p_name[0].upper() if p_name else "") +
+            (p_surname[0].upper() if p_surname else "")
+        ) or "U"
+        if p_pic:
+            avatar_src = "data:image/jpeg;base64," + base64.b64encode(bytes(p_pic)).decode()
+
+# ── Top navbar ────────────────────────────────────────────────────────────────
+
+nav_l, nav_r = st.columns([9, 1])
+
+with nav_l:
+    st.markdown(
+        '<p style="color:#e6edf3;font-size:1.15rem;font-weight:700;margin:6px 0 0 0;">📌 Post a Job</p>',
+        unsafe_allow_html=True
+    )
+
+with nav_r:
     if user_id:
-        profile = get_user_profile(user_id)
-        if profile:
-            p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address = profile
-            initials = (
-                (p_name[0].upper() if p_name else "") +
-                (p_surname[0].upper() if p_surname else "")
-            ) or "U"
+        toggle_label = "✕ Close" if st.session_state.show_profile_panel else "👤 Profile"
+        if st.button(toggle_label, key="avatar_toggle", use_container_width=True):
+            st.session_state.show_profile_panel = not st.session_state.show_profile_panel
+            st.session_state.confirm_delete = False
+            st.rerun()
+    else:
+        if st.button("🔑 Login", use_container_width=True):
+            st.switch_page("EasyJobsWebApp.py")
 
-            st.markdown(f"""
-            <div class="profile-card">
-                <div class="avatar-circle">{initials}</div>
-                <p class="profile-username">{p_name or ""} {p_surname or ""}</p>
-                <p class="profile-email">{p_email or ""}</p>
+# ── Inline profile panel ──────────────────────────────────────────────────────
+
+if st.session_state.show_profile_panel and user_id and profile:
+    p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = profile
+
+    avatar_inner = f'<img src="{avatar_src}" />' if avatar_src else f'<span>{initials}</span>'
+
+    st.markdown(f"""
+    <div class="profile-panel">
+        <div class="profile-panel-header">
+            <div class="panel-avatar">{avatar_inner}</div>
+            <div>
+                <p class="panel-name">{p_name or ""} {p_surname or ""}</p>
+                <p class="panel-uname">@{p_username or ""}</p>
+                <p class="panel-email">{p_email or ""}</p>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-            panel_label = "✕ Close Profile" if st.session_state.show_profile_panel else "👤 Edit Profile"
-            if st.button(panel_label, use_container_width=True, key="toggle_profile"):
-                st.session_state.show_profile_panel = not st.session_state.show_profile_panel
-                st.rerun()
-
-        if st.session_state.show_profile_panel and profile:
-            st.divider()
-            st.markdown("### ✏️ Edit Profile")
-
-            new_name     = st.text_input("First Name",    value=p_name     or "", key="pf_name")
-            new_surname  = st.text_input("Last Name",     value=p_surname  or "", key="pf_surname")
-            new_username = st.text_input("Username",      value=p_username or "", key="pf_username")
-            new_email    = st.text_input("Email",         value=p_email    or "", key="pf_email")
-            new_cell1    = st.text_input("Cell Number 1", value=p_cell1    or "", key="pf_cell1")
-            new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
-            new_address  = st.text_input("Address",       value=p_address  or "", key="pf_address")
-
-            st.markdown("#### 🔒 Change Password")
-            new_pw  = st.text_input("New Password",     type="password", key="pf_pw",  placeholder="Leave blank to keep current")
-            conf_pw = st.text_input("Confirm Password", type="password", key="pf_cpw", placeholder="Repeat new password")
-
-            st.divider()
-
-            if st.button("💾 Save Changes", use_container_width=True, type="primary", key="pf_save"):
-                if new_pw and new_pw != conf_pw:
-                    st.error("❌ Passwords do not match.")
-                else:
-                    update_user_profile(user_id, new_name, new_surname, new_username,
-                                        new_email, new_cell1, new_cell2, new_address)
-                    if new_pw:
-                        update_user_password(user_id, new_pw)
-                    st.session_state.profile_saved = True
-                    st.success("✅ Profile updated!")
+    with st.expander("📷 Change Profile Picture", expanded=False):
+        new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
+        if new_pic:
+            pic_bytes = new_pic.read()
+            prev_col, btn_col = st.columns([1, 3])
+            with prev_col:
+                st.image(io.BytesIO(pic_bytes), width=72)
+            with btn_col:
+                st.write("")
+                if st.button("💾 Save Photo", key="save_pic"):
+                    update_profile_picture(user_id, pic_bytes)
+                    st.success("✅ Profile picture updated!")
                     st.rerun()
 
-            if st.button("🚪 Log Out", use_container_width=True, key="pf_logout"):
+    st.markdown("### ✏️ Edit Profile")
+    c1, c2 = st.columns(2)
+    with c1:
+        new_name     = st.text_input("First Name",    value=p_name     or "", key="pf_name")
+        new_username = st.text_input("Username",      value=p_username or "", key="pf_username")
+        new_cell1    = st.text_input("Cell Number 1", value=p_cell1    or "", key="pf_cell1")
+        new_address  = st.text_input("Address",       value=p_address  or "", key="pf_address")
+    with c2:
+        new_surname  = st.text_input("Last Name",     value=p_surname  or "", key="pf_surname")
+        new_email    = st.text_input("Email",         value=p_email    or "", key="pf_email")
+        new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
+
+    st.markdown("#### 🔒 Change Password")
+    pw1, pw2 = st.columns(2)
+    with pw1:
+        new_pw  = st.text_input("New Password",     type="password", key="pf_pw",  placeholder="Leave blank to keep current")
+    with pw2:
+        conf_pw = st.text_input("Confirm Password", type="password", key="pf_cpw", placeholder="Repeat new password")
+
+    st.markdown("")
+    ba, bb, bc = st.columns([2, 1, 1])
+    with ba:
+        if st.button("💾 Save Changes", use_container_width=True, type="primary", key="pf_save"):
+            if new_pw and new_pw != conf_pw:
+                st.error("❌ Passwords do not match.")
+            else:
+                update_user_profile(user_id, new_name, new_surname, new_username,
+                                    new_email, new_cell1, new_cell2, new_address)
+                if new_pw:
+                    update_user_password(user_id, new_pw)
+                st.success("✅ Profile updated!")
+                st.session_state.show_profile_panel = False
+                st.rerun()
+    with bb:
+        if st.button("🚪 Log Out", use_container_width=True, key="pf_logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.switch_page("EasyJobsWebApp.py")
+    with bc:
+        if st.button("🗑️ Delete Account", use_container_width=True, key="pf_del_open"):
+            st.session_state.confirm_delete = True
+
+    if st.session_state.confirm_delete:
+        st.warning("⚠️ This will **permanently delete** your account and all your data.")
+        confirm_del = st.text_input("Type DELETE to confirm", key="pf_del_confirm")
+        if st.button("Confirm Delete", key="pf_delete_final", type="primary"):
+            if confirm_del.strip() == "DELETE":
+                delete_user_account(user_id)
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
+                st.success("Account deleted.")
                 st.switch_page("EasyJobsWebApp.py")
+            else:
+                st.error("Type DELETE (all caps) to confirm.")
 
-            st.divider()
-            with st.expander("⚠️ Danger Zone", expanded=False):
-                st.warning("This will **permanently delete** your account and all your data. This cannot be undone.")
-                confirm_del = st.text_input("Type DELETE to confirm", key="pf_del_confirm")
-                if st.button("🗑️ Delete My Account", use_container_width=True, key="pf_delete"):
-                    if confirm_del.strip() == "DELETE":
-                        delete_user_account(user_id)
-                        for key in list(st.session_state.keys()):
-                            del st.session_state[key]
-                        st.success("Account deleted.")
-                        st.switch_page("EasyJobsWebApp.py")
-                    else:
-                        st.error("Type DELETE (all caps) to confirm.")
-    else:
-        st.info("🔒 Log in to access your profile.")
-        if st.button("🔑 Login / Register", use_container_width=True):
-            st.switch_page("EasyJobsWebApp.py")
+    st.divider()
 
 # ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -294,7 +364,9 @@ if st.button("Post Job"):
 
         except Exception as e:
             st.error(f"Error: {e}")
+
 if st.button("Go Home"):
-            st.switch_page("pages/home.py")
+    st.switch_page("pages/home.py")
+
 st.divider()
 st.caption("Easy Jobs © 2026 | Connecting skilled workers with opportunities")
