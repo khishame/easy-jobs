@@ -100,7 +100,7 @@ if login_clicked:
             if username.lower() in {u.lower() for u in ADMIN_USERNAMES}:
                 st.session_state["is_admin"] = True
                 st.success(f"👑 **Admin login successful!** Welcome @{username}")
-                st.switch_page("AdminPanel.py")  # ← ADMIN GOES HERE
+                st.switch_page("pages/admin.py")  # ← ADMIN GOES HERE
             else:
                 st.session_state["is_admin"] = False
                 st.success("✅ Login successful!")
