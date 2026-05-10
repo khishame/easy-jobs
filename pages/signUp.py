@@ -216,7 +216,7 @@ if st.button("Create Account"):
 
         if success:
             st.success("Account created successfully!")
-            st.switch_page("pages/home.py")
+            st.switch_page("pages/EasyJobsWebApp.py")
         else:
             st.error(msg)
 
