@@ -240,4 +240,175 @@ if st.session_state.show_profile_panel and user_id and profile:
         new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
 
     st.markdown("#### 🔒 Change Password")
-    pw1, pw
+    pw1, pw2 = st.columns(2)
+    with pw1:
+        new_password = st.text_input("New Password", type="password", key="new_pw")
+    with pw2:
+        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pw")
+    
+    if st.button("🔄 Update Password", key="update_pw"):
+        if new_password and new_password == confirm_password:
+            if len(new_password) >= 6:
+                update_user_password(user_id, new_password)
+                st.success("✅ Password updated successfully!")
+                st.rerun()
+            else:
+                st.error("❌ Password must be at least 6 characters")
+        elif new_password or confirm_password:
+            st.error("❌ Passwords do not match")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 Save Profile Changes", key="save_profile"):
+            update_user_profile(user_id, new_name, new_surname, new_username, 
+                              new_email, new_cell1, new_cell2, new_address)
+            st.success("✅ Profile updated!")
+            st.rerun()
+    
+    with col2:
+        if st.button("🗑️ Delete Account", key="delete_acc_btn"):
+            st.session_state.confirm_delete = True
+
+    if st.session_state.confirm_delete:
+        st.warning("⚠️ **WARNING**: This action is permanent and cannot be undone!")
+        confirm_col1, confirm_col2 = st.columns(2)
+        with confirm_col1:
+            if st.button("✅ Yes, Delete My Account", key="confirm_delete"):
+                delete_user_account(user_id)
+                st.session_state.clear()
+                st.success("Account deleted successfully")
+                st.switch_page("EasyJobsWebApp.py")
+        with confirm_col2:
+            if st.button("❌ Cancel", key="cancel_delete"):
+                st.session_state.confirm_delete = False
+                st.rerun()
+
+# DISPLAY NOTIFICATIONS SECTION
+st.markdown("---")
+
+# Get unread counts
+unread_job_notifications = count_unread(user_id)
+unread_admin_messages = count_unread_admin_messages(user_id)
+
+# Create tabs for different notification types
+tab1, tab2 = st.tabs([f"📋 Job Updates ({unread_job_notifications})", 
+                       f"📨 Admin Messages ({unread_admin_messages})"])
+
+with tab1:
+    # Job notifications
+    notifications = get_notifications(user_id)
+    
+    if not notifications:
+        st.info("📭 No job notifications yet")
+    else:
+        # Mark all as read button
+        if unread_job_notifications > 0:
+            if st.button("✅ Mark All Job Notifications as Read", key="mark_all_job"):
+                mark_all_read(user_id)
+                st.rerun()
+        
+        # Display notifications
+        for notif in notifications:
+            notif_id, message, created_at, is_read, related_job_id = notif
+            
+            # Determine card class
+            card_class = "notif-unread" if not is_read else "notif-read"
+            
+            # Create notification card
+            st.markdown(f"""
+            <div class="{card_class}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <strong>{message}</strong><br>
+                        <small>{created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Just now'}</small>
+                    </div>
+                    <div>
+                        {'🔴 UNREAD' if not is_read else '✓ READ'}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Add action buttons for unread notifications
+            if not is_read:
+                col_btn1, col_btn2 = st.columns([1, 4])
+                with col_btn1:
+                    if st.button("✓ Mark Read", key=f"mark_{notif_id}"):
+                        mark_notification_read(notif_id)
+                        st.rerun()
+                if related_job_id:
+                    with col_btn2:
+                        if st.button("🔍 View Job", key=f"view_job_{notif_id}"):
+                            st.session_state.selected_job_id = related_job_id
+                            st.switch_page("pages/JobDetails.py")
+            st.markdown("---")
+
+with tab2:
+    # Admin messages (direct and broadcasts)
+    admin_messages = get_admin_messages(user_id)
+    
+    if not admin_messages:
+        st.info("📭 No admin messages yet")
+    else:
+        # Display admin messages
+        for msg in admin_messages:
+            msg_id, subject, message_content, created_at, is_read, msg_type = msg
+            
+            # Determine message type styling
+            type_class = "admin-direct" if msg_type == 'direct' else "admin-broadcast"
+            type_icon = "🔒" if msg_type == 'direct' else "📢"
+            type_label = "Personal" if msg_type == 'direct' else "Announcement"
+            
+            # Create message card
+            st.markdown(f"""
+            <div class="notif-{'unread' if not is_read else 'read'} {type_class}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <strong>{type_icon} {subject}</strong><br>
+                        <span style="font-size: 0.9em;">{message_content}</span><br>
+                        <small>{created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Just now'} • {type_label}</small>
+                    </div>
+                    <div>
+                        {'🔴 UNREAD' if not is_read else '✓ READ'}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Mark as read button for unread messages
+            if not is_read:
+                if st.button(f"✓ Mark as Read", key=f"mark_admin_{msg_id}"):
+                    mark_admin_message_read(msg_id, user_id)
+                    st.rerun()
+            st.markdown("---")
+
+# Message admin section
+st.markdown("---")
+st.markdown("### 💬 Send Message to Admin")
+
+with st.form("send_admin_message"):
+    message_subject = st.text_input("Subject", placeholder="e.g., Question about job posting")
+    message_content = st.text_area("Message", placeholder="Type your message here...", height=100)
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        submitted = st.form_submit_button("📤 Send", use_container_width=True)
+    
+    if submitted:
+        if message_subject and message_content:
+            success = send_user_message_to_admin(user_id, message_subject, message_content)
+            if success:
+                st.success("✅ Message sent to admin successfully!")
+                st.balloons()
+            else:
+                st.error("❌ Failed to send message. Please try again.")
+        else:
+            st.warning("⚠️ Please fill in both subject and message")
+
+# Footer
+st.markdown("---")
+st.markdown(
+    '<p style="text-align: center; color: #64748b; font-size: 0.8rem;">'
+    '🔔 Stay updated with your job notifications and admin messages</p>',
+    unsafe_allow_html=True
+)
