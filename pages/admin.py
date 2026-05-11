@@ -9,7 +9,6 @@ from dp import (
     delete_admin_message,
     get_user_messages_for_admin,
     mark_user_message_read,
-    admin_respond_to_user,
 )
  
 # ── Config ─────────────────────────────────────────────────────────────────────
@@ -128,9 +127,6 @@ p, li { color: #94a3b8; }
 }
 .user-message-content {
     color: #e2e8f0; margin: 8px 0; padding: 8px; background: #0f172a; border-radius: 6px;
-}
-.user-message-response {
-    background: #0f172a; border-left: 3px solid #10b981; padding: 10px; margin-top: 10px; border-radius: 6px;
 }
  
 .stButton > button {
@@ -326,7 +322,7 @@ with tab_jobs:
  
             st.divider()
  
-# ══ SUPPORT MESSAGES TAB (NEW) ════════════════════════════════════════════════
+# ══ SUPPORT MESSAGES TAB (VIEW ONLY - NO RESPONSE) ════════════════════════════
  
 with tab_messages:
     st.markdown("### 💬 User Support Messages")
@@ -368,8 +364,7 @@ with tab_messages:
                 st.markdown(f'<small style="color:#64748b;">From: User #{user_id} • {created_at.strftime("%Y-%m-%d %H:%M") if created_at else "Just now"}</small>', unsafe_allow_html=True)
             with col_msg_status:
                 if not is_read:
-                    st.markdown('<span style="background:#f59e0b; color:#000; padding:2px 8px; border-radius:12px; font-size:0.7rem;">🔴 UNREAD</span>', unsafe_allow_html=True)
-                    if st.button("✓ Mark Read", key=f"mark_read_{msg_id}"):
+                    if st.button("✓ Mark as Read", key=f"mark_read_{msg_id}"):
                         mark_user_message_read(msg_id)
                         st.rerun()
                 else:
@@ -377,39 +372,6 @@ with tab_messages:
             
             # Message content
             st.markdown(f'<div class="user-message-content">{message}</div>', unsafe_allow_html=True)
-            
-            # Existing admin response
-            if admin_response:
-                st.markdown(f'''
-                <div class="user-message-response">
-                    <strong style="color:#10b981;">💬 Your Response:</strong><br>
-                    {admin_response}<br>
-                    <small style="color:#64748b;">Responded on: {msg[5] if len(msg) > 5 else "N/A"}</small>
-                </div>
-                ''', unsafe_allow_html=True)
-            
-            # Response form
-            st.markdown("#### ✍️ Respond to this message")
-            response_text = st.text_area(
-                "Admin Response",
-                placeholder="Type your response here... The user will receive a notification.",
-                key=f"response_{msg_id}",
-                label_visibility="collapsed"
-            )
-            
-            col_btn1, col_btn2 = st.columns([1, 4])
-            with col_btn1:
-                if st.button("📤 Send Response", key=f"send_response_{msg_id}", type="primary"):
-                    if response_text.strip():
-                        success = admin_respond_to_user(msg_id, response_text.strip())
-                        if success:
-                            st.success("✅ Response sent to user!")
-                            st.balloons()
-                            st.rerun()
-                        else:
-                            st.error("❌ Failed to send response")
-                    else:
-                        st.warning("Please enter a response message")
             
             st.markdown('</div>', unsafe_allow_html=True)
             st.divider()
