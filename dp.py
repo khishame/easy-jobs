@@ -4,9 +4,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 import os
- 
+
 load_dotenv()
- 
+
 EMAIL_CONFIG = {
     "smtp_host": "smtp.gmail.com",
     "smtp_port": 587,
@@ -14,11 +14,51 @@ EMAIL_CONFIG = {
     "sender_password": os.getenv("EMAIL_PASS"),
     "sender_name": "Easy Jobs"
 }
- 
+
 def get_connection():
     database_url = os.getenv("DATABASE_URL")
     return psycopg2.connect(database_url)
- 
+
+# =========================
+# INITIALIZE DATABASE TABLES
+# =========================
+def init_database_tables():
+    """Run this once to create all necessary tables"""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Create user_messages table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_messages (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                        subject VARCHAR(255) NOT NULL,
+                        message TEXT NOT NULL,
+                        is_read BOOLEAN DEFAULT FALSE,
+                        admin_response TEXT,
+                        responded_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                # Add any missing columns to existing tables
+                cursor.execute("""
+                    DO $$ 
+                    BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                                      WHERE table_name='notifications' AND column_name='job_id') THEN
+                            ALTER TABLE notifications ADD COLUMN job_id INTEGER REFERENCES jobs(id);
+                        END IF;
+                    END $$;
+                """)
+                
+            conn.commit()
+            print("Database tables initialized successfully")
+            return True
+    except Exception as e:
+        print(f"init_database_tables error: {e}")
+        return False
+
 # =========================
 # CLAIM A JOB
 # =========================
@@ -61,7 +101,7 @@ def claim_job(job_id, worker_user_id):
     except Exception as e:
         print(f"claim_job error: {e}")
         return "error"
- 
+
 # =========================
 # SEND EMAIL NOTIFICATION
 # =========================
@@ -88,7 +128,7 @@ def send_email_notification(to_email, to_name, job_name, worker_username):
             server.sendmail(EMAIL_CONFIG["sender_email"], to_email, msg.as_string())
     except Exception as e:
         print(f"Email send error: {e}")
- 
+
 # =========================
 # GET NOTIFICATIONS
 # =========================
@@ -106,7 +146,7 @@ def get_notifications(user_id):
     except Exception as e:
         print(f"get_notifications error: {e}")
         return []
- 
+
 # =========================
 # MARK NOTIFICATION AS READ
 # =========================
@@ -120,7 +160,7 @@ def mark_notification_read(notification_id):
     except Exception as e:
         print(f"mark_read error: {e}")
         return False
- 
+
 # =========================
 # MARK ALL NOTIFICATIONS AS READ
 # =========================
@@ -134,7 +174,7 @@ def mark_all_read(user_id):
     except Exception as e:
         print(f"mark_all_read error: {e}")
         return False
- 
+
 # =========================
 # COUNT UNREAD NOTIFICATIONS
 # =========================
@@ -149,9 +189,9 @@ def count_unread(user_id):
                 return cursor.fetchone()[0]
     except:
         return 0
- 
+
 # =========================
-# ADMIN: SEND BROADCAST MESSAGE (to all users)
+# ADMIN: SEND BROADCAST MESSAGE
 # =========================
 def send_broadcast_message(admin_username, message):
     try:
@@ -169,9 +209,9 @@ def send_broadcast_message(admin_username, message):
     except Exception as e:
         print(f"send_broadcast error: {e}")
         return False
- 
+
 # =========================
-# ADMIN: SEND DIRECT MESSAGE to a specific user
+# ADMIN: SEND DIRECT MESSAGE
 # =========================
 def send_admin_direct_message(admin_username, user_id, message):
     try:
@@ -186,9 +226,9 @@ def send_admin_direct_message(admin_username, user_id, message):
     except Exception as e:
         print(f"send_direct_message error: {e}")
         return False
- 
+
 # =========================
-# USER: GET ADMIN MESSAGES for a user
+# USER: GET ADMIN MESSAGES
 # =========================
 def get_admin_messages(user_id):
     try:
@@ -204,9 +244,9 @@ def get_admin_messages(user_id):
     except Exception as e:
         print(f"get_admin_messages error: {e}")
         return []
- 
+
 # =========================
-# USER: MARK ADMIN MESSAGE AS READ
+# MARK ADMIN MESSAGE AS READ
 # =========================
 def mark_admin_message_read(message_id, user_id=None):
     try:
@@ -225,9 +265,9 @@ def mark_admin_message_read(message_id, user_id=None):
     except Exception as e:
         print(f"mark_admin_message_read error: {e}")
         return False
- 
+
 # =========================
-# USER: COUNT UNREAD ADMIN MESSAGES
+# COUNT UNREAD ADMIN MESSAGES
 # =========================
 def count_unread_admin_messages(user_id):
     try:
@@ -240,9 +280,9 @@ def count_unread_admin_messages(user_id):
                 return cursor.fetchone()[0]
     except:
         return 0
- 
+
 # =========================
-# ADMIN: GET ALL ADMIN MESSAGES (for message board view)
+# GET ALL ADMIN MESSAGES
 # =========================
 def get_all_admin_messages():
     try:
@@ -259,9 +299,9 @@ def get_all_admin_messages():
     except Exception as e:
         print(f"get_all_admin_messages error: {e}")
         return []
- 
+
 # =========================
-# ADMIN: DELETE AN ADMIN MESSAGE
+# DELETE ADMIN MESSAGE
 # =========================
 def delete_admin_message(message_id):
     try:
@@ -275,54 +315,21 @@ def delete_admin_message(message_id):
         return False
 
 # =========================
-# CREATE USER MESSAGES TABLE
-# =========================
-def create_user_messages_table():
-    """Run this once to create the user messages table"""
-    try:
-        with get_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_messages (
-                        id SERIAL PRIMARY KEY,
-                        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                        username VARCHAR(255),
-                        email VARCHAR(255),
-                        subject VARCHAR(255),
-                        message TEXT,
-                        is_read BOOLEAN DEFAULT FALSE,
-                        admin_response TEXT,
-                        responded_at TIMESTAMP,
-                        created_at TIMESTAMP DEFAULT NOW()
-                    )
-                """)
-            conn.commit()
-            return True
-    except Exception as e:
-        print(f"create_user_messages_table error: {e}")
-        return False
-
-# =========================
 # USER: SEND MESSAGE TO ADMIN
 # =========================
 def send_user_message_to_admin(user_id, subject, message):
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
-                # Get user details
-                cursor.execute("SELECT username, email FROM users WHERE id = %s", (user_id,))
-                user_row = cursor.fetchone()
-                if not user_row:
-                    return False
-                
-                username, email = user_row
-                
                 # Insert into user_messages table
                 cursor.execute("""
-                    INSERT INTO user_messages (user_id, username, email, subject, message)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (user_id, username, email, subject, message))
+                    INSERT INTO user_messages (user_id, subject, message, created_at)
+                    VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                    RETURNING id
+                """, (user_id, subject, message))
+                message_id = cursor.fetchone()[0]
             conn.commit()
+            print(f"Message {message_id} sent successfully from user {user_id}")
             return True
     except Exception as e:
         print(f"send_user_message_to_admin error: {e}")
@@ -337,14 +344,14 @@ def get_user_messages_for_admin(unread_only=False):
             with conn.cursor() as cursor:
                 if unread_only:
                     cursor.execute("""
-                        SELECT id, user_id, username, email, subject, message, is_read, admin_response, created_at
+                        SELECT id, user_id, subject, message, is_read, admin_response, created_at
                         FROM user_messages
                         WHERE is_read = FALSE
                         ORDER BY created_at DESC
                     """)
                 else:
                     cursor.execute("""
-                        SELECT id, user_id, username, email, subject, message, is_read, admin_response, created_at
+                        SELECT id, user_id, subject, message, is_read, admin_response, created_at
                         FROM user_messages
                         ORDER BY created_at DESC
                     """)
@@ -380,19 +387,18 @@ def admin_respond_to_user(message_id, response_text):
             with conn.cursor() as cursor:
                 cursor.execute("""
                     UPDATE user_messages 
-                    SET admin_response = %s, responded_at = NOW()
+                    SET admin_response = %s, responded_at = CURRENT_TIMESTAMP
                     WHERE id = %s
+                    RETURNING user_id
                 """, (response_text, message_id))
-                
-                # Get the user_id to send notification
-                cursor.execute("SELECT user_id FROM user_messages WHERE id = %s", (message_id,))
-                user_id = cursor.fetchone()[0]
-                
-                # Send notification to user
-                cursor.execute("""
-                    INSERT INTO notifications (user_id, message)
-                    VALUES (%s, %s)
-                """, (user_id, f"📨 Admin responded to your message: {response_text[:100]}..."))
+                result = cursor.fetchone()
+                if result:
+                    user_id = result[0]
+                    # Send notification to user
+                    cursor.execute("""
+                        INSERT INTO notifications (user_id, message)
+                        VALUES (%s, %s)
+                    """, (user_id, f"📨 Admin responded to your message"))
             conn.commit()
             return True
     except Exception as e:
@@ -400,7 +406,7 @@ def admin_respond_to_user(message_id, response_text):
         return False
 
 # =========================
-# GET USER'S OWN MESSAGES AND RESPONSES
+# GET USER'S OWN MESSAGES
 # =========================
 def get_user_own_messages(user_id):
     try:
