@@ -230,7 +230,7 @@ with nav_r:
             st.session_state.confirm_delete = False
             st.rerun()
     else:
-        if st.button("🔑 Login", use_container_width=True):
+        if st.button("Login", use_container_width=True):
             st.switch_page("EasyJobsWebApp.py")
 
 # ── Inline profile panel ──────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ if st.session_state.show_profile_panel and user_id and profile:
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("📷 Change Profile Picture", expanded=False):
+    with st.expander(" Change Profile Picture", expanded=False):
         new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
         if new_pic:
             pic_bytes = new_pic.read()
@@ -262,9 +262,9 @@ if st.session_state.show_profile_panel and user_id and profile:
                 st.image(io.BytesIO(pic_bytes), width=72)
             with btn_col:
                 st.write("")
-                if st.button("💾 Save Photo", key="save_pic"):
+                if st.button("Save Photo", key="save_pic"):
                     update_profile_picture(user_id, pic_bytes)
-                    st.success("✅ Profile picture updated!")
+                    st.success("Profile picture updated!")
                     st.rerun()
 
     st.markdown("### ✏️ Edit Profile")
@@ -366,7 +366,7 @@ with col2:
 
 st.divider()
 
-st.subheader("🆕 Recent Jobs")
+st.subheader(" Recent Jobs")
 recent = get_recent_jobs()
 if not recent.empty:
     st.dataframe(recent, use_container_width=True)
@@ -375,5 +375,5 @@ else:
 
 st.divider()
 
-if st.button("⬅️ Back"):
+if st.button("Back"):
     st.switch_page("pages/home.py")
