@@ -173,7 +173,7 @@ if "show_profile_panel" not in st.session_state:
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
     
-if st.button("go Home"):
+if st.button("Home"):
         st.switch_page("pages/home.py")
 
 
