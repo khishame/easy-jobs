@@ -359,6 +359,7 @@ if st.button("Post Job"):
                 conn.commit()
 
             st.success("Job posted successfully!")
+            st.switch_page("pages/home.py")
             reset_form()
             st.switch_page("pages/home.py")
 
