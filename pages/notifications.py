@@ -426,8 +426,8 @@ with tab3:
                 else:
                     st.info(" Waiting for admin response...")
                     
-  if st.button("Back"):
-      st.switch_page("pages/home.py")
+      if st.button("Back"):
+          st.switch_page("pages/home.py")
 
 
 st.markdown("---")
