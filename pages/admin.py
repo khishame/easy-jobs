@@ -37,9 +37,8 @@ def delete_user(user_id):
 def get_all_jobs():
     with get_connection() as conn:
         with conn.cursor() as cur:
-            # FIXED: Using job_name instead of title
             cur.execute("""
-                SELECT j.id, j.job_name, j.description, j.location, j.price,
+                SELECT j.id, j.job_name, j.description, j.address, j.price,
                        j.status, u.username AS owner,
                        c.username AS claimed_by_user
                 FROM jobs j
