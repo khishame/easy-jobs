@@ -34,9 +34,10 @@ def get_all_jobs():
         with conn.cursor() as cursor:
             cursor.execute("""
                 SELECT j.id, j.job_name, j.description, j.price, j.image,
-                       j.date_posted, u.username, u.email, j.status
+               j.date_posted, u.username, u.email, j.status
                 FROM jobs j
                 JOIN users u ON j.user_id = u.id
+                WHERE j.status = 'open'
                 ORDER BY j.date_posted DESC
             """)
             return cursor.fetchall()
