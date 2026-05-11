@@ -68,7 +68,7 @@ def get_stats():
  
 # ── Page setup ─────────────────────────────────────────────────────────────────
  
-st.set_page_config(page_title="Admin - Easy Jobs", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Admin - Easy Jobs", layout="wide")
 st.markdown("<style>[data-testid='stSidebarNav'],[data-testid='stSidebar']{display:none!important;}</style>", unsafe_allow_html=True)
  
 st.markdown("""
@@ -141,13 +141,13 @@ footer { visibility: hidden; }
 username = st.session_state.get("username")
  
 if not username:
-    st.warning("⚠️ Please log in first.")
-    if st.button("🔑 Go to Login"):
+    st.warning("Please log in first.")
+    if st.button("Go to Login"):
         st.switch_page("EasyJobsWebApp.py")
     st.stop()
  
 if username.lower() not in {u.lower() for u in ADMIN_USERNAMES}:
-    st.error("⛔ Access denied. You do not have admin privileges.")
+    st.error(" Access denied. You do not have admin privileges.")
     st.stop()
  
 # ── Header ─────────────────────────────────────────────────────────────────────
@@ -155,13 +155,13 @@ if username.lower() not in {u.lower() for u in ADMIN_USERNAMES}:
 col_h1, col_h2 = st.columns([7, 1])
 with col_h1:
     st.markdown(
-        f'<h1 style="margin-bottom:0;">🛡️ Admin Panel <span class="admin-badge">ADMIN</span></h1>'
+        f'<h1 style="margin-bottom:0;"> Admin Panel <span class="admin-badge">ADMIN</span></h1>'
         f'<p style="margin-top:4px;">Logged in as <strong style="color:#38bdf8;">@{username}</strong></p>',
         unsafe_allow_html=True
     )
 with col_h2:
     st.write("")
-    if st.button("🚪 Logout", use_container_width=True):
+    if st.button("Logout", use_container_width=True):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.switch_page("EasyJobsWebApp.py")
@@ -185,7 +185,7 @@ st.write("")
 # ── Tabs ───────────────────────────────────────────────────────────────────────
  
 tab_users, tab_jobs, tab_broadcast, tab_board = st.tabs([
-    "👥 Users", "💼 Jobs", "📢 Broadcast & Message", "📋 Message Board"
+    " Users", "Jobs", "Broadcast & Message", " Message Board"
 ])
  
 # ══ USERS TAB ══════════════════════════════════════════════════════════════════
@@ -201,7 +201,7 @@ with tab_users:
     if not users:
         st.info("No users found.")
     else:
-        search = st.text_input("🔍 Search users", placeholder="Filter by name, username or email...", key="user_search")
+        search = st.text_input("Search users", placeholder="Filter by name, username or email...", key="user_search")
         filtered = [u for u in users if not search or any(search.lower() in str(v).lower() for v in u)]
         st.caption(f"Showing {len(filtered)} of {len(users)} users")
         st.write("")
@@ -228,9 +228,9 @@ with tab_users:
                     st.session_state[f"confirm_user_{uid}"] = True
  
             if st.session_state.get(f"confirm_user_{uid}"):
-                st.warning(f"⚠️ Delete user **@{uname}**? This removes all their jobs and data.")
+                st.warning(f"Delete user **@{uname}**? This removes all their jobs and data.")
                 yes, no = st.columns(2)
-                if yes.button("✅ Yes, delete", key=f"yes_user_{uid}", type="primary"):
+                if yes.button("Yes, delete", key=f"yes_user_{uid}", type="primary"):
                     try:
                         delete_user(uid)
                         st.success(f"User @{uname} deleted.")
@@ -238,7 +238,7 @@ with tab_users:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error: {e}")
-                if no.button("❌ Cancel", key=f"no_user_{uid}"):
+                if no.button(" Cancel", key=f"no_user_{uid}"):
                     st.session_state.pop(f"confirm_user_{uid}", None)
                     st.rerun()
  
@@ -284,13 +284,13 @@ with tab_jobs:
             
             with c6:
                 st.markdown(f"<small style='color:{status_color};'>{status_text}</small>", unsafe_allow_html=True)
-                if st.button("🗑️", key=f"del_job_{jid}", help="Delete this job"):
+                if st.button( key=f"del_job_{jid}", help="Delete this job"):
                     st.session_state[f"confirm_job_{jid}"] = True
  
             if st.session_state.get(f"confirm_job_{jid}"):
-                st.warning(f"⚠️ Delete job **{job_name}**?")
+                st.warning(f" Delete job **{job_name}**?")
                 yes, no = st.columns(2)
-                if yes.button("✅ Yes, delete", key=f"yes_job_{jid}", type="primary"):
+                if yes.button(" Yes, delete", key=f"yes_job_{jid}", type="primary"):
                     try:
                         delete_job(jid)
                         st.success(f"Job '{job_name}' deleted.")
@@ -298,16 +298,14 @@ with tab_jobs:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error: {e}")
-                if no.button("❌ Cancel", key=f"no_job_{jid}"):
+                if no.button(" Cancel", key=f"no_job_{jid}"):
                     st.session_state.pop(f"confirm_job_{jid}", None)
                     st.rerun()
  
             st.divider()
  
-# ══ BROADCAST & MESSAGE TAB ════════════════════════════════════════════════════
- 
 with tab_broadcast:
-    st.markdown("### 📢 Broadcast to All Users")
+    st.markdown("### Broadcast to All Users")
     st.markdown("<p style='color:#64748b;font-size:0.9rem;'>This message will be sent to every user on the platform and will appear in their notifications/messages.</p>", unsafe_allow_html=True)
  
     broadcast_msg = st.text_area(
@@ -317,20 +315,20 @@ with tab_broadcast:
     )
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("📤 Send to All Users", type="primary", key="send_broadcast", use_container_width=True):
+        if st.button(" Send to All Users", type="primary", key="send_broadcast", use_container_width=True):
             if not broadcast_msg.strip():
                 st.error("Please enter a message before sending.")
             else:
                 ok = send_broadcast_message(username, broadcast_msg.strip())
                 if ok:
-                    st.success("✅ Broadcast sent to all users!")
+                    st.success("Broadcast sent to all users!")
                     st.balloons()
                 else:
-                    st.error("❌ Failed to send broadcast. Check your database connection.")
+                    st.error("Failed to send broadcast. Check your database connection.")
  
     st.divider()
  
-    st.markdown("### 💬 Send Direct Message to a User")
+    st.markdown("### Send Direct Message to a User")
     st.markdown("<p style='color:#64748b;font-size:0.9rem;'>Send a private message to a specific user. They will see it in their message board.</p>", unsafe_allow_html=True)
  
     try:
@@ -363,18 +361,17 @@ with tab_broadcast:
                     target_id = recipient_options[selected_label]
                     ok = send_admin_direct_message(username, target_id, direct_msg.strip())
                     if ok:
-                        st.success(f"✅ Message sent to {selected_label}!")
+                        st.success(f" Message sent to {selected_label}!")
                         st.balloons()
                     else:
-                        st.error("❌ Failed to send message.")
+                        st.error(" Failed to send message.")
  
-# ══ MESSAGE BOARD TAB ══════════════════════════════════════════════════════════
  
 with tab_board:
-    st.markdown("### 📋 Message Board")
+    st.markdown("###  Message Board")
     st.markdown("<p style='color:#64748b;font-size:0.9rem;'>All messages sent by admin — broadcasts and direct messages.</p>", unsafe_allow_html=True)
  
-    if st.button("🔄 Refresh", key="refresh_board", use_container_width=False):
+    if st.button(" Refresh", key="refresh_board", use_container_width=False):
         st.rerun()
  
     try:
@@ -391,7 +388,7 @@ with tab_board:
         # Add delete all button
         col_filter, col_delete_all = st.columns([3, 1])
         with col_delete_all:
-            if st.button("🗑️ Delete All", type="secondary"):
+            if st.button(" Delete All", type="secondary"):
                 for msg in all_msgs:
                     delete_admin_message(msg[0])
                 st.rerun()
@@ -407,7 +404,7 @@ with tab_board:
                 continue
  
             css_class = "msg-broadcast" if is_broadcast else "msg-direct"
-            kind_label = "📢 Broadcast" if is_broadcast else "💬 Direct"
+            kind_label = " Broadcast" if is_broadcast else " Direct"
             read_label = "✅ Read" if is_read else "🔵 Unread"
             time_str   = created_at.strftime("%Y-%m-%d %H:%M") if created_at else "—"
  
@@ -425,7 +422,7 @@ with tab_board:
                 """, unsafe_allow_html=True)
             with col_del:
                 st.write("")
-                if st.button("🗑️", key=f"del_msg_{mid}", help="Delete this message"):
+                if st.button( key=f"del_msg_{mid}", help="Delete this message"):
                     delete_admin_message(mid)
                     st.rerun()
             
