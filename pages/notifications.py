@@ -1,414 +1,418 @@
-import streamlit as st
 import psycopg2
-import bcrypt
-import base64
-import io
-from dp import (
-    get_connection, get_notifications, mark_notification_read, mark_all_read, count_unread,
-    get_admin_messages, mark_admin_message_read, count_unread_admin_messages, send_user_message_to_admin
-)
-
-def get_user_id(username):
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from dotenv import load_dotenv
+import os
+ 
+load_dotenv()
+ 
+EMAIL_CONFIG = {
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "sender_email": os.getenv("EMAIL"),
+    "sender_password": os.getenv("EMAIL_PASS"),
+    "sender_name": "Easy Jobs"
+}
+ 
+def get_connection():
+    database_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(database_url)
+ 
+# =========================
+# CLAIM A JOB
+# =========================
+def claim_job(job_id, worker_user_id):
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, username))
+                cursor.execute("""
+                    SELECT j.status, j.user_id, j.job_name, u.email, u.username
+                    FROM jobs j
+                    JOIN users u ON j.user_id = u.id
+                    WHERE j.id = %s
+                """, (job_id,))
                 row = cursor.fetchone()
-                return row[0] if row else None
+                if not row:
+                    return "error"
+                status, poster_user_id, job_name, poster_email, poster_username = row
+                if poster_user_id == worker_user_id:
+                    return "own_job"
+                if status == "taken":
+                    return "already_taken"
+                cursor.execute("SELECT username FROM users WHERE id = %s", (worker_user_id,))
+                worker_row = cursor.fetchone()
+                worker_username = worker_row[0] if worker_row else "Someone"
+                cursor.execute("""
+                    UPDATE jobs SET status = 'taken', claimed_by = %s, claimed_at = NOW()
+                    WHERE id = %s
+                """, (worker_user_id, job_id))
+                message = f"🎉 Your job '{job_name}' has been claimed by {worker_username}!"
+                cursor.execute("""
+                    INSERT INTO notifications (user_id, job_id, message)
+                    VALUES (%s, %s, %s)
+                """, (poster_user_id, job_id, message))
+            conn.commit()
+        send_email_notification(
+            to_email=poster_email, to_name=poster_username,
+            job_name=job_name, worker_username=worker_username
+        )
+        return "success"
     except Exception as e:
-        st.error(f"Error getting user: {e}")
-        return None
+        print(f"claim_job error: {e}")
+        return "error"
+ 
+# =========================
+# SEND EMAIL NOTIFICATION
+# =========================
+def send_email_notification(to_email, to_name, job_name, worker_username):
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Your job '{job_name}' has been claimed!"
+        msg["From"]    = f"{EMAIL_CONFIG['sender_name']} <{EMAIL_CONFIG['sender_email']}>"
+        msg["To"]      = to_email
+        text_body = f"Hi {to_name},\n\nYour job \"{job_name}\" has been claimed by {worker_username}.\n\n— The Easy Jobs Team"
+        html_body = f"""<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:30px;">
+  <div style="max-width:500px;margin:auto;background:white;border-radius:10px;padding:30px;">
+    <h2 style="color:#2d6a4f;">🎉 Your job has been claimed!</h2>
+    <p>Hi <strong>{to_name}</strong>,</p>
+    <p>Your job <strong>{job_name}</strong> has been claimed by <strong>{worker_username}</strong>.</p>
+    <p>Log in to Easy Jobs to view details.</p>
+    <p style="color:#888;font-size:12px;">— The Easy Jobs Team</p>
+  </div></body></html>"""
+        msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+        with smtplib.SMTP(EMAIL_CONFIG["smtp_host"], EMAIL_CONFIG["smtp_port"]) as server:
+            server.starttls()
+            server.login(EMAIL_CONFIG["sender_email"], EMAIL_CONFIG["sender_password"])
+            server.sendmail(EMAIL_CONFIG["sender_email"], to_email, msg.as_string())
+    except Exception as e:
+        print(f"Email send error: {e}")
+ 
+# =========================
+# GET NOTIFICATIONS
+# =========================
+def get_notifications(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, message, created_at, is_read, job_id
+                    FROM notifications
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                """, (user_id,))
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_notifications error: {e}")
+        return []
+ 
+# =========================
+# MARK NOTIFICATION AS READ
+# =========================
+def mark_notification_read(notification_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("UPDATE notifications SET is_read = TRUE WHERE id = %s", (notification_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"mark_read error: {e}")
+        return False
+ 
+# =========================
+# MARK ALL NOTIFICATIONS AS READ
+# =========================
+def mark_all_read(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("UPDATE notifications SET is_read = TRUE WHERE user_id = %s", (user_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"mark_all_read error: {e}")
+        return False
+ 
+# =========================
+# COUNT UNREAD NOTIFICATIONS
+# =========================
+def count_unread(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM notifications
+                    WHERE user_id = %s AND is_read = FALSE
+                """, (user_id,))
+                return cursor.fetchone()[0]
+    except:
+        return 0
+ 
+# =========================
+# ADMIN: SEND BROADCAST MESSAGE (to all users)
+# =========================
+def send_broadcast_message(admin_username, message):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id FROM users")
+                all_users = cursor.fetchall()
+                for (uid,) in all_users:
+                    cursor.execute("""
+                        INSERT INTO admin_messages (user_id, admin_username, message, is_broadcast)
+                        VALUES (%s, %s, %s, TRUE)
+                    """, (uid, admin_username, message))
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"send_broadcast error: {e}")
+        return False
+ 
+# =========================
+# ADMIN: SEND DIRECT MESSAGE to a specific user
+# =========================
+def send_admin_direct_message(admin_username, user_id, message):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO admin_messages (user_id, admin_username, message, is_broadcast)
+                    VALUES (%s, %s, %s, FALSE)
+                """, (user_id, admin_username, message))
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"send_direct_message error: {e}")
+        return False
+ 
+# =========================
+# USER: GET ADMIN MESSAGES for a user
+# =========================
+def get_admin_messages(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, admin_username, message, is_broadcast, is_read, created_at
+                    FROM admin_messages
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                """, (user_id,))
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_admin_messages error: {e}")
+        return []
+ 
+# =========================
+# USER: MARK ADMIN MESSAGE AS READ
+# =========================
+def mark_admin_message_read(message_id, user_id=None):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                if user_id:
+                    cursor.execute("""
+                        UPDATE admin_messages 
+                        SET is_read = TRUE 
+                        WHERE id = %s AND user_id = %s
+                    """, (message_id, user_id))
+                else:
+                    cursor.execute("UPDATE admin_messages SET is_read = TRUE WHERE id = %s", (message_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"mark_admin_message_read error: {e}")
+        return False
+ 
+# =========================
+# USER: COUNT UNREAD ADMIN MESSAGES
+# =========================
+def count_unread_admin_messages(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM admin_messages
+                    WHERE user_id = %s AND is_read = FALSE
+                """, (user_id,))
+                return cursor.fetchone()[0]
+    except:
+        return 0
+ 
+# =========================
+# ADMIN: GET ALL ADMIN MESSAGES (for message board view)
+# =========================
+def get_all_admin_messages():
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT am.id, u.username, am.admin_username, am.message,
+                           am.is_broadcast, am.is_read, am.created_at
+                    FROM admin_messages am
+                    JOIN users u ON am.user_id = u.id
+                    ORDER BY am.created_at DESC
+                """)
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_all_admin_messages error: {e}")
+        return []
+ 
+# =========================
+# ADMIN: DELETE AN ADMIN MESSAGE
+# =========================
+def delete_admin_message(message_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM admin_messages WHERE id = %s", (message_id,))
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"delete_admin_message error: {e}")
+        return False
 
-def get_user_profile(user_id):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT name, surname, username, email, cellphone1, cellphone2, address, profile_picture
-                FROM users WHERE id = %s
-            """, (user_id,))
-            return cursor.fetchone()
+# =========================
+# CREATE USER MESSAGES TABLE
+# =========================
+def create_user_messages_table():
+    """Run this once to create the user messages table"""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_messages (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                        username VARCHAR(255),
+                        email VARCHAR(255),
+                        subject VARCHAR(255),
+                        message TEXT,
+                        is_read BOOLEAN DEFAULT FALSE,
+                        admin_response TEXT,
+                        responded_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"create_user_messages_table error: {e}")
+        return False
 
-def update_user_profile(user_id, name, surname, username, email, cellphone1, cellphone2, address):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                UPDATE users SET name=%s, surname=%s, username=%s, email=%s,
-                    cellphone1=%s, cellphone2=%s, address=%s WHERE id=%s
-            """, (name, surname, username, email, cellphone1, cellphone2, address, user_id))
-        conn.commit()
+# =========================
+# USER: SEND MESSAGE TO ADMIN
+# =========================
+def send_user_message_to_admin(user_id, subject, message):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Get user details
+                cursor.execute("SELECT username, email FROM users WHERE id = %s", (user_id,))
+                user_row = cursor.fetchone()
+                if not user_row:
+                    return False
+                
+                username, email = user_row
+                
+                # Insert into user_messages table
+                cursor.execute("""
+                    INSERT INTO user_messages (user_id, username, email, subject, message)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (user_id, username, email, subject, message))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"send_user_message_to_admin error: {e}")
+        return False
 
-def update_profile_picture(user_id, image_bytes):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("UPDATE users SET profile_picture=%s WHERE id=%s",
-                           (psycopg2.Binary(image_bytes), user_id))
-        conn.commit()
+# =========================
+# ADMIN: GET ALL USER MESSAGES
+# =========================
+def get_user_messages_for_admin(unread_only=False):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                if unread_only:
+                    cursor.execute("""
+                        SELECT id, user_id, username, email, subject, message, is_read, admin_response, created_at
+                        FROM user_messages
+                        WHERE is_read = FALSE
+                        ORDER BY created_at DESC
+                    """)
+                else:
+                    cursor.execute("""
+                        SELECT id, user_id, username, email, subject, message, is_read, admin_response, created_at
+                        FROM user_messages
+                        ORDER BY created_at DESC
+                    """)
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_user_messages_for_admin error: {e}")
+        return []
 
-def update_user_password(user_id, new_password):
-    hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("UPDATE users SET password=%s WHERE id=%s", (hashed, user_id))
-        conn.commit()
+# =========================
+# ADMIN: MARK USER MESSAGE AS READ
+# =========================
+def mark_user_message_read(message_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE user_messages 
+                    SET is_read = TRUE 
+                    WHERE id = %s
+                """, (message_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"mark_user_message_read error: {e}")
+        return False
 
-def delete_user_account(user_id):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE claimed_by = %s", (user_id,))
-            cursor.execute("DELETE FROM saved_jobs WHERE user_id = %s", (user_id,))
-            cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
-            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-        conn.commit()
+# =========================
+# ADMIN: RESPOND TO USER MESSAGE
+# =========================
+def admin_respond_to_user(message_id, response_text):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE user_messages 
+                    SET admin_response = %s, responded_at = NOW()
+                    WHERE id = %s
+                """, (response_text, message_id))
+                
+                # Get the user_id to send notification
+                cursor.execute("SELECT user_id FROM user_messages WHERE id = %s", (message_id,))
+                user_id = cursor.fetchone()[0]
+                
+                # Send notification to user
+                cursor.execute("""
+                    INSERT INTO notifications (user_id, message)
+                    VALUES (%s, %s)
+                """, (user_id, f"📨 Admin responded to your message: {response_text[:100]}..."))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"admin_respond_to_user error: {e}")
+        return False
 
-st.set_page_config(page_title="Notifications - Easy Jobs", page_icon="🔔", layout="centered")
-
-st.markdown("<style>[data-testid='stSidebarNav'],[data-testid='stSidebar']{display:none!important;}</style>", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-* { font-family: 'DM Sans', sans-serif; }
-
-[data-testid="stAppViewContainer"] { background: #0b1220; }
-
-.block-container {
-    max-width: 850px;
-    margin: auto;
-    padding: 1.2rem 2rem 3rem 2rem;
-}
-
-h1 { text-align: center; font-size: 2rem; font-weight: 800; color: #38bdf8; }
-
-div[data-testid="stContainer"] { margin-bottom: 10px; }
-
-html, body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #e5e7eb; }
-strong { color: #e5e7eb; }
-small { color: #64748b !important; }
-
-.stButton > button {
-    width: 100%; background: transparent;
-    border: 1px solid rgba(255,255,255,0.10); color: #e5e7eb;
-    border-radius: 10px; padding: 0.45rem; font-weight: 600; transition: all 0.2s ease;
-}
-.stButton > button:hover {
-    background: rgba(56,189,248,0.12);
-    border: 1px solid rgba(56,189,248,0.4); transform: translateY(-2px);
-}
-.stButton > button[kind="primary"] {
-    background: linear-gradient(90deg, #2563eb, #06b6d4); border: none; color: white;
-}
-
-hr { border-color: rgba(255,255,255,0.06); }
-.stAlert { border-radius: 12px; background: #0f172a; color: #cbd5e1; }
-.element-container { margin-bottom: 0.6rem; }
-footer { visibility: hidden; }
-
-/* ── JOB Notification cards ── */
-.notif-unread {
-    background: #0f2a1e;
-    border-left: 4px solid #22c55e;
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 8px;
-}
-.notif-unread strong { color: #bbf7d0; }
-.notif-unread small  { color: #4ade80 !important; }
-
-.notif-read {
-    background: #131c2e;
-    border-left: 4px solid rgba(255,255,255,0.12);
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 8px;
-}
-.notif-read strong { color: #94a3b8; }
-.notif-read small  { color: #475569 !important; }
-
-/* ── ADMIN MESSAGES ── */
-.admin-direct { border-left: 4px solid #ef4444 !important; }
-.admin-broadcast { border-left: 4px solid #8b5cf6 !important; }
-.admin-direct strong, .admin-broadcast strong { color: #f87171 !important; }
-
-/* ── Profile panel ── */
-.profile-panel {
-    background: #161b22; border: 1px solid #30363d;
-    border-radius: 14px; margin-bottom: 20px; overflow: hidden;
-}
-.profile-panel-header {
-    background: linear-gradient(135deg, #1a2d4a, #0d1117);
-    border-bottom: 1px solid #30363d; padding: 20px;
-    display: flex; align-items: center; gap: 16px;
-}
-.panel-avatar {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: #1f6feb; border: 3px solid #388bfd;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px; font-weight: 700; color: #fff;
-    overflow: hidden; flex-shrink: 0;
-}
-.panel-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
-.panel-name  { color: #e6edf3; font-size: 1.1rem; font-weight: 700; margin: 0 0 2px 0; }
-.panel-uname { color: #58a6ff; font-size: 0.82rem; margin: 0 0 2px 0; }
-.panel-email { color: #8b949e; font-size: 0.78rem; margin: 0; }
-</style>
-""", unsafe_allow_html=True)
-
-user_id = st.session_state.get("user_id")
-
-if "show_profile_panel" not in st.session_state:
-    st.session_state.show_profile_panel = False
-if "confirm_delete" not in st.session_state:
-    st.session_state.confirm_delete = False
-
-profile    = None
-initials   = "U"
-avatar_src = None
-
-if user_id:
-    profile = get_user_profile(user_id)
-    if profile:
-        p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = profile
-        initials = (
-            (p_name[0].upper() if p_name else "") +
-            (p_surname[0].upper() if p_surname else "")
-        ) or "U"
-        if p_pic:
-            avatar_src = "data:image/jpeg;base64," + base64.b64encode(bytes(p_pic)).decode()
-
-nav_l, nav_r = st.columns([9, 1])
-
-with nav_l:
-    st.markdown(
-        '<p style="color:#38bdf8;font-size:1.15rem;font-weight:700;margin:6px 0 0 0;">🔔 Notifications</p>',
-        unsafe_allow_html=True
-    )
-
-with nav_r:
-    if user_id:
-        toggle_label = "✕ Close" if st.session_state.show_profile_panel else "👤 Profile"
-        if st.button(toggle_label, key="avatar_toggle", use_container_width=True):
-            st.session_state.show_profile_panel = not st.session_state.show_profile_panel
-            st.session_state.confirm_delete = False
-            st.rerun()
-    else:
-        if st.button("🔑 Login", use_container_width=True):
-            st.switch_page("EasyJobsWebApp.py")
-
-# PROFILE PANEL (unchanged)
-if st.session_state.show_profile_panel and user_id and profile:
-    p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = profile
-
-    avatar_inner = f'<img src="{avatar_src}" />' if avatar_src else f'<span>{initials}</span>'
-
-    st.markdown(f"""
-    <div class="profile-panel">
-        <div class="profile-panel-header">
-            <div class="panel-avatar">{avatar_inner}</div>
-            <div>
-                <p class="panel-name">{p_name or ""} {p_surname or ""}</p>
-                <p class="panel-uname">@{p_username or ""}</p>
-                <p class="panel-email">{p_email or ""}</p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("📷 Change Profile Picture", expanded=False):
-        new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
-        if new_pic:
-            pic_bytes = new_pic.read()
-            prev_col, btn_col = st.columns([1, 3])
-            with prev_col:
-                st.image(io.BytesIO(pic_bytes), width=72)
-            with btn_col:
-                st.write("")
-                if st.button("💾 Save Photo", key="save_pic"):
-                    update_profile_picture(user_id, pic_bytes)
-                    st.success("✅ Profile picture updated!")
-                    st.rerun()
-
-    st.markdown("### ✏️ Edit Profile")
-    c1, c2 = st.columns(2)
-    with c1:
-        new_name     = st.text_input("First Name",    value=p_name     or "", key="pf_name")
-        new_username = st.text_input("Username",      value=p_username or "", key="pf_username")
-        new_cell1    = st.text_input("Cell Number 1", value=p_cell1    or "", key="pf_cell1")
-        new_address  = st.text_input("Address",       value=p_address  or "", key="pf_address")
-    with c2:
-        new_surname  = st.text_input("Last Name",     value=p_surname  or "", key="pf_surname")
-        new_email    = st.text_input("Email",         value=p_email    or "", key="pf_email")
-        new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
-
-    st.markdown("#### 🔒 Change Password")
-    pw1, pw2 = st.columns(2)
-    with pw1:
-        new_password = st.text_input("New Password", type="password", key="new_pw")
-    with pw2:
-        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pw")
-    
-    if st.button("🔄 Update Password", key="update_pw"):
-        if new_password and new_password == confirm_password:
-            if len(new_password) >= 6:
-                update_user_password(user_id, new_password)
-                st.success("✅ Password updated successfully!")
-                st.rerun()
-            else:
-                st.error("❌ Password must be at least 6 characters")
-        elif new_password or confirm_password:
-            st.error("❌ Passwords do not match")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("💾 Save Profile Changes", key="save_profile"):
-            update_user_profile(user_id, new_name, new_surname, new_username, 
-                              new_email, new_cell1, new_cell2, new_address)
-            st.success("✅ Profile updated!")
-            st.rerun()
-    
-    with col2:
-        if st.button("🗑️ Delete Account", key="delete_acc_btn"):
-            st.session_state.confirm_delete = True
-
-    if st.session_state.confirm_delete:
-        st.warning("⚠️ **WARNING**: This action is permanent and cannot be undone!")
-        confirm_col1, confirm_col2 = st.columns(2)
-        with confirm_col1:
-            if st.button("✅ Yes, Delete My Account", key="confirm_delete"):
-                delete_user_account(user_id)
-                st.session_state.clear()
-                st.success("Account deleted successfully")
-                st.switch_page("EasyJobsWebApp.py")
-        with confirm_col2:
-            if st.button("❌ Cancel", key="cancel_delete"):
-                st.session_state.confirm_delete = False
-                st.rerun()
-
-# DISPLAY NOTIFICATIONS SECTION
-st.markdown("---")
-
-# Get unread counts
-unread_job_notifications = count_unread(user_id)
-unread_admin_messages = count_unread_admin_messages(user_id)
-
-# Create tabs for different notification types
-tab1, tab2 = st.tabs([f"📋 Job Updates ({unread_job_notifications})", 
-                       f"📨 Admin Messages ({unread_admin_messages})"])
-
-with tab1:
-    # Job notifications
-    notifications = get_notifications(user_id)
-    
-    if not notifications:
-        st.info("📭 No job notifications yet")
-    else:
-        # Mark all as read button
-        if unread_job_notifications > 0:
-            if st.button("✅ Mark All Job Notifications as Read", key="mark_all_job"):
-                mark_all_read(user_id)
-                st.rerun()
-        
-        # Display notifications
-        for notif in notifications:
-            notif_id, message, created_at, is_read, related_job_id = notif
-            
-            # Determine card class
-            card_class = "notif-unread" if not is_read else "notif-read"
-            
-            # Create notification card
-            st.markdown(f"""
-            <div class="{card_class}">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="flex: 1;">
-                        <strong>{message}</strong><br>
-                        <small>{created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Just now'}</small>
-                    </div>
-                    <div>
-                        {'🔴 UNREAD' if not is_read else '✓ READ'}
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Add action buttons for unread notifications
-            if not is_read:
-                col_btn1, col_btn2 = st.columns([1, 4])
-                with col_btn1:
-                    if st.button("✓ Mark Read", key=f"mark_{notif_id}"):
-                        mark_notification_read(notif_id)
-                        st.rerun()
-                if related_job_id:
-                    with col_btn2:
-                        if st.button("🔍 View Job", key=f"view_job_{notif_id}"):
-                            st.session_state.selected_job_id = related_job_id
-                            st.switch_page("pages/JobDetails.py")
-            st.markdown("---")
-
-with tab2:
-    # Admin messages (direct and broadcasts)
-    admin_messages = get_admin_messages(user_id)
-    
-    if not admin_messages:
-        st.info("📭 No admin messages yet")
-    else:
-        # Display admin messages
-        for msg in admin_messages:
-            msg_id, subject, message_content, created_at, is_read, msg_type = msg
-            
-            # Determine message type styling
-            type_class = "admin-direct" if msg_type == 'direct' else "admin-broadcast"
-            type_icon = "🔒" if msg_type == 'direct' else "📢"
-            type_label = "Personal" if msg_type == 'direct' else "Announcement"
-            
-            # Create message card
-            st.markdown(f"""
-            <div class="notif-{'unread' if not is_read else 'read'} {type_class}">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="flex: 1;">
-                        <strong>{type_icon} {subject}</strong><br>
-                        <span style="font-size: 0.9em;">{message_content}</span><br>
-                        <small>{created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Just now'} • {type_label}</small>
-                    </div>
-                    <div>
-                        {'🔴 UNREAD' if not is_read else '✓ READ'}
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Mark as read button for unread messages
-            if not is_read:
-                if st.button(f"✓ Mark as Read", key=f"mark_admin_{msg_id}"):
-                    mark_admin_message_read(msg_id, user_id)
-                    st.rerun()
-            st.markdown("---")
-
-# Message admin section
-st.markdown("---")
-st.markdown("### 💬 Send Message to Admin")
-
-with st.form("send_admin_message"):
-    message_subject = st.text_input("Subject", placeholder="e.g., Question about job posting")
-    message_content = st.text_area("Message", placeholder="Type your message here...", height=100)
-    
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        submitted = st.form_submit_button("📤 Send", use_container_width=True)
-    
-    if submitted:
-        if message_subject and message_content:
-            success = send_user_message_to_admin(user_id, message_subject, message_content)
-            if success:
-                st.success("✅ Message sent to admin successfully!")
-                st.balloons()
-            else:
-                st.error("❌ Failed to send message. Please try again.")
-        else:
-            st.warning("⚠️ Please fill in both subject and message")
-
-# Footer
-st.markdown("---")
-st.markdown(
-    '<p style="text-align: center; color: #64748b; font-size: 0.8rem;">'
-    '🔔 Stay updated with your job notifications and admin messages</p>',
-    unsafe_allow_html=True
-)
+# =========================
+# GET USER'S OWN MESSAGES AND RESPONSES
+# =========================
+def get_user_own_messages(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, subject, message, admin_response, responded_at, created_at
+                    FROM user_messages
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                """, (user_id,))
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_user_own_messages error: {e}")
+        return []
