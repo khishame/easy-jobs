@@ -240,5 +240,4 @@ if st.session_state.show_profile_panel and user_id and profile:
         new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
 
     st.markdown("#### 🔒 Change Password")
-    pw1, pw2 = st.columns(2)
-    with pw1
+    pw1, pw
