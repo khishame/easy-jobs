@@ -218,7 +218,7 @@ nav_l, nav_r = st.columns([9, 1])
 
 with nav_l:
     st.markdown(
-        '<p style="color:#e6edf3;font-size:1.15rem;font-weight:700;margin:6px 0 0 0;">💼 Easy Jobs Marketplace</p>',
+        '<p style="color:#e6edf3;font-size:1.15rem;font-weight:700;margin:6px 0 0 0;">Easy Jobs Marketplace</p>',
         unsafe_allow_html=True
     )
 
