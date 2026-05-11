@@ -7,6 +7,9 @@ from dp import (
     send_admin_direct_message,
     get_all_admin_messages,
     delete_admin_message,
+    get_user_messages_for_admin,
+    mark_user_message_read,
+    admin_respond_to_user,
 )
  
 # ── Config ─────────────────────────────────────────────────────────────────────
@@ -30,6 +33,7 @@ def delete_user(user_id):
             cur.execute("DELETE FROM saved_jobs WHERE user_id = %s",      (user_id,))
             cur.execute("DELETE FROM notifications WHERE user_id = %s",   (user_id,))
             cur.execute("DELETE FROM admin_messages WHERE user_id = %s",  (user_id,))
+            cur.execute("DELETE FROM user_messages WHERE user_id = %s",   (user_id,))
             cur.execute("DELETE FROM jobs WHERE user_id = %s",            (user_id,))
             cur.execute("DELETE FROM users WHERE id = %s",                (user_id,))
         conn.commit()
@@ -63,7 +67,8 @@ def get_stats():
             cur.execute("SELECT COUNT(*) FROM jobs");           total_jobs   = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM jobs WHERE status = 'open'"); open_jobs = cur.fetchone()[0]
             cur.execute("SELECT COUNT(*) FROM jobs WHERE claimed_by IS NOT NULL"); claimed_jobs = cur.fetchone()[0]
-    return total_users, total_jobs, open_jobs, claimed_jobs
+            cur.execute("SELECT COUNT(*) FROM user_messages WHERE is_read = FALSE"); unread_messages = cur.fetchone()[0]
+    return total_users, total_jobs, open_jobs, claimed_jobs, unread_messages
  
 # ── Page setup ─────────────────────────────────────────────────────────────────
  
@@ -108,6 +113,25 @@ p, li { color: #94a3b8; }
     border-radius: 10px; padding: 12px 16px; margin-bottom: 8px;
 }
 .msg-meta { font-size: 0.75rem; color: #475569; margin-top: 4px; }
+ 
+.user-message {
+    background: #1e293b;
+    border-left: 4px solid #f59e0b;
+    border-radius: 10px; padding: 16px; margin-bottom: 12px;
+}
+.user-message-unread {
+    background: #2d1f0a;
+    border-left: 4px solid #f59e0b;
+}
+.user-message-subject {
+    font-weight: 700; color: #fbbf24; margin-bottom: 8px;
+}
+.user-message-content {
+    color: #e2e8f0; margin: 8px 0; padding: 8px; background: #0f172a; border-radius: 6px;
+}
+.user-message-response {
+    background: #0f172a; border-left: 3px solid #10b981; padding: 10px; margin-top: 10px; border-radius: 6px;
+}
  
 .stButton > button {
     background: transparent;
@@ -170,12 +194,13 @@ st.divider()
 # ── Stats ──────────────────────────────────────────────────────────────────────
  
 try:
-    total_users, total_jobs, open_jobs, claimed_jobs = get_stats()
-    s1, s2, s3, s4 = st.columns(4)
+    total_users, total_jobs, open_jobs, claimed_jobs, unread_messages = get_stats()
+    s1, s2, s3, s4, s5 = st.columns(5)
     with s1: st.markdown(f'<div class="stat-card"><p class="stat-number">{total_users}</p><p class="stat-label">Total Users</p></div>', unsafe_allow_html=True)
     with s2: st.markdown(f'<div class="stat-card"><p class="stat-number">{total_jobs}</p><p class="stat-label">Total Jobs</p></div>', unsafe_allow_html=True)
     with s3: st.markdown(f'<div class="stat-card"><p class="stat-number">{open_jobs}</p><p class="stat-label">Open Jobs</p></div>', unsafe_allow_html=True)
     with s4: st.markdown(f'<div class="stat-card"><p class="stat-number">{claimed_jobs}</p><p class="stat-label">Claimed Jobs</p></div>', unsafe_allow_html=True)
+    with s5: st.markdown(f'<div class="stat-card"><p class="stat-number">{unread_messages}</p><p class="stat-label">Unread Support Messages</p></div>', unsafe_allow_html=True)
 except Exception as e:
     st.error(f"Could not load stats: {e}")
  
@@ -183,8 +208,8 @@ st.write("")
  
 # ── Tabs ───────────────────────────────────────────────────────────────────────
  
-tab_users, tab_jobs, tab_broadcast, tab_board = st.tabs([
-    " Users", "Jobs", "Broadcast & Message", " Message Board"
+tab_users, tab_jobs, tab_messages, tab_broadcast, tab_board = st.tabs([
+    "👥 Users", "📋 Jobs", "💬 Support Messages", "📢 Broadcast & DM", "📜 Message Board"
 ])
  
 # ══ USERS TAB ══════════════════════════════════════════════════════════════════
@@ -267,7 +292,6 @@ with tab_jobs:
         st.divider()
  
         for j in filtered_j:
-            # Updated to match the new column order (job_name instead of title)
             jid, job_name, desc, location, price, status, owner, claimed_by = j
             c0,c1,c2,c3,c4,c5,c6 = st.columns([1,3,2,2,1.5,2,1.5])
             c0.markdown(f"<small style='color:#64748b;'>#{jid}</small>", unsafe_allow_html=True)
@@ -276,14 +300,13 @@ with tab_jobs:
             c3.markdown(f"<span style='color:#38bdf8;'>@{owner or '—'}</span>", unsafe_allow_html=True)
             c4.markdown(f"<span style='color:#4ade80;font-weight:600;'>R{price or 0}</span>", unsafe_allow_html=True)
             c5.markdown(f"<small style='color:#94a3b8;'>{claimed_by or '—'}</small>", unsafe_allow_html=True)
- 
-            # Show status badge
+            
             status_color = "#22c55e" if status == "open" else "#ef4444"
             status_text = "Open" if status == "open" else "Taken"
             
             with c6:
                 st.markdown(f"<small style='color:{status_color};'>{status_text}</small>", unsafe_allow_html=True)
-                if st.button("Delete",key=f"del_job_{jid}", help="Delete this job"):
+                if st.button("Delete", key=f"del_job_{jid}", help="Delete this job"):
                     st.session_state[f"confirm_job_{jid}"] = True
  
             if st.session_state.get(f"confirm_job_{jid}"):
@@ -303,8 +326,98 @@ with tab_jobs:
  
             st.divider()
  
+# ══ SUPPORT MESSAGES TAB (NEW) ════════════════════════════════════════════════
+ 
+with tab_messages:
+    st.markdown("### 💬 User Support Messages")
+    st.markdown("<p style='color:#64748b;font-size:0.9rem;'>Messages sent by users through the Contact Support form.</p>", unsafe_allow_html=True)
+    
+    # Filter options
+    col_filter1, col_filter2 = st.columns([2, 1])
+    with col_filter1:
+        show_filter = st.radio("Show:", ["All Messages", "Unread Only"], horizontal=True, key="msg_show_filter")
+    with col_filter2:
+        if st.button("🔄 Refresh", key="refresh_msgs", use_container_width=True):
+            st.rerun()
+    
+    try:
+        if show_filter == "Unread Only":
+            user_messages = get_user_messages_for_admin(unread_only=True)
+        else:
+            user_messages = get_user_messages_for_admin(unread_only=False)
+    except Exception as e:
+        st.error(f"Could not load messages: {e}")
+        user_messages = []
+    
+    if not user_messages:
+        st.info("No support messages from users yet.")
+    else:
+        st.caption(f"Showing {len(user_messages)} message(s)")
+        
+        for msg in user_messages:
+            msg_id, user_id, subject, message, is_read, admin_response, created_at = msg
+            
+            # Message container with unread styling
+            unread_class = "user-message-unread" if not is_read else ""
+            st.markdown(f'<div class="user-message {unread_class}">', unsafe_allow_html=True)
+            
+            # Message header
+            col_msg_header, col_msg_status = st.columns([3, 1])
+            with col_msg_header:
+                st.markdown(f'<div class="user-message-subject">📧 {subject}</div>', unsafe_allow_html=True)
+                st.markdown(f'<small style="color:#64748b;">From: User #{user_id} • {created_at.strftime("%Y-%m-%d %H:%M") if created_at else "Just now"}</small>', unsafe_allow_html=True)
+            with col_msg_status:
+                if not is_read:
+                    st.markdown('<span style="background:#f59e0b; color:#000; padding:2px 8px; border-radius:12px; font-size:0.7rem;">🔴 UNREAD</span>', unsafe_allow_html=True)
+                    if st.button("✓ Mark Read", key=f"mark_read_{msg_id}"):
+                        mark_user_message_read(msg_id)
+                        st.rerun()
+                else:
+                    st.markdown('<span style="color:#10b981;">✓ Read</span>', unsafe_allow_html=True)
+            
+            # Message content
+            st.markdown(f'<div class="user-message-content">{message}</div>', unsafe_allow_html=True)
+            
+            # Existing admin response
+            if admin_response:
+                st.markdown(f'''
+                <div class="user-message-response">
+                    <strong style="color:#10b981;">💬 Your Response:</strong><br>
+                    {admin_response}<br>
+                    <small style="color:#64748b;">Responded on: {msg[5] if len(msg) > 5 else "N/A"}</small>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            # Response form
+            st.markdown("#### ✍️ Respond to this message")
+            response_text = st.text_area(
+                "Admin Response",
+                placeholder="Type your response here... The user will receive a notification.",
+                key=f"response_{msg_id}",
+                label_visibility="collapsed"
+            )
+            
+            col_btn1, col_btn2 = st.columns([1, 4])
+            with col_btn1:
+                if st.button("📤 Send Response", key=f"send_response_{msg_id}", type="primary"):
+                    if response_text.strip():
+                        success = admin_respond_to_user(msg_id, response_text.strip())
+                        if success:
+                            st.success("✅ Response sent to user!")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("❌ Failed to send response")
+                    else:
+                        st.warning("Please enter a response message")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            st.divider()
+ 
+# ══ BROADCAST TAB ══════════════════════════════════════════════════════════════
+ 
 with tab_broadcast:
-    st.markdown("### Broadcast to All Users")
+    st.markdown("### 📢 Broadcast to All Users")
     st.markdown("<p style='color:#64748b;font-size:0.9rem;'>This message will be sent to every user on the platform and will appear in their notifications/messages.</p>", unsafe_allow_html=True)
  
     broadcast_msg = st.text_area(
@@ -314,7 +427,7 @@ with tab_broadcast:
     )
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button(" Send to All Users", type="primary", key="send_broadcast", use_container_width=True):
+        if st.button("📢 Send to All Users", type="primary", key="send_broadcast", use_container_width=True):
             if not broadcast_msg.strip():
                 st.error("Please enter a message before sending.")
             else:
@@ -327,7 +440,7 @@ with tab_broadcast:
  
     st.divider()
  
-    st.markdown("### Send Direct Message to a User")
+    st.markdown("### 📨 Send Direct Message to a User")
     st.markdown("<p style='color:#64748b;font-size:0.9rem;'>Send a private message to a specific user. They will see it in their message board.</p>", unsafe_allow_html=True)
  
     try:
@@ -360,17 +473,18 @@ with tab_broadcast:
                     target_id = recipient_options[selected_label]
                     ok = send_admin_direct_message(username, target_id, direct_msg.strip())
                     if ok:
-                        st.success(f" Message sent to {selected_label}!")
+                        st.success(f"✅ Message sent to {selected_label}!")
                         st.balloons()
                     else:
-                        st.error(" Failed to send message.")
+                        st.error("❌ Failed to send message.")
  
+# ══ MESSAGE BOARD TAB ══════════════════════════════════════════════════════════
  
 with tab_board:
-    st.markdown("###  Message Board")
+    st.markdown("### 📜 Message Board")
     st.markdown("<p style='color:#64748b;font-size:0.9rem;'>All messages sent by admin — broadcasts and direct messages.</p>", unsafe_allow_html=True)
  
-    if st.button(" Refresh", key="refresh_board", use_container_width=False):
+    if st.button("🔄 Refresh", key="refresh_board", use_container_width=False):
         st.rerun()
  
     try:
@@ -384,10 +498,10 @@ with tab_board:
     else:
         filter_type = st.radio("Filter", ["All", "Broadcasts only", "Direct only"], horizontal=True, key="msg_filter")
         
-        # Add delete all button
+        # Delete all button
         col_filter, col_delete_all = st.columns([3, 1])
         with col_delete_all:
-            if st.button(" Delete All", type="secondary"):
+            if st.button("🗑️ Delete All", type="secondary"):
                 for msg in all_msgs:
                     delete_admin_message(msg[0])
                 st.rerun()
@@ -403,7 +517,7 @@ with tab_board:
                 continue
  
             css_class = "msg-broadcast" if is_broadcast else "msg-direct"
-            kind_label = " Broadcast" if is_broadcast else " Direct"
+            kind_label = "📢 Broadcast" if is_broadcast else "🔒 Direct"
             read_label = "✅ Read" if is_read else "🔵 Unread"
             time_str   = created_at.strftime("%Y-%m-%d %H:%M") if created_at else "—"
  
