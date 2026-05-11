@@ -425,9 +425,9 @@ with tab3:
                     st.markdown(f"*Responded on: {responded_at.strftime('%Y-%m-%d %H:%M') if responded_at else 'N/A'}*")
                 else:
                     st.info(" Waiting for admin response...")
-                    
-      if st.button("Back"):
-          st.switch_page("pages/home.py")
+                
+ if st.button("Back"):
+          st.switch_page("pages/home.py")   
 
 
 st.markdown("---")
