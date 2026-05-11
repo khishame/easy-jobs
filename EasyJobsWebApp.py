@@ -79,7 +79,7 @@ with col2:
     password_input = st.text_input("Password", type="password")
  
 btn_col1, btn_col2 = st.columns(2)
-login_clicked  = btn_col1.button("Sigh In", use_container_width=True)
+login_clicked  = btn_col1.button("Sign In", use_container_width=True)
 signup_clicked = btn_col2.button("Sign Up", use_container_width=True)
  
 
