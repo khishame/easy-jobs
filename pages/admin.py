@@ -283,7 +283,7 @@ with tab_jobs:
             
             with c6:
                 st.markdown(f"<small style='color:{status_color};'>{status_text}</small>", unsafe_allow_html=True)
-                if st.button( key=f"del_job_{jid}", help="Delete this job"):
+                if st.button("Delete",key=f"del_job_{jid}", help="Delete this job"):
                     st.session_state[f"confirm_job_{jid}"] = True
  
             if st.session_state.get(f"confirm_job_{jid}"):
@@ -421,7 +421,7 @@ with tab_board:
                 """, unsafe_allow_html=True)
             with col_del:
                 st.write("")
-                if st.button( key=f"del_msg_{mid}", help="Delete this message"):
+                if st.button("Delete", key=f"del_msg_{mid}", help="Delete this message"):
                     delete_admin_message(mid)
                     st.rerun()
             
