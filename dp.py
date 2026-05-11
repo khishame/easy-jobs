@@ -260,3 +260,67 @@ def delete_admin_message(message_id):
     except Exception as e:
         print(f"delete_admin_message error: {e}")
         return False
+
+def get_admin_messages(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, admin_username, message, is_broadcast, is_read, created_at
+                    FROM admin_messages
+                    WHERE user_id = %s
+                    ORDER BY created_at DESC
+                """, (user_id,))
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_admin_messages error: {e}")
+        return []
+
+# =========================
+# USER: MARK ADMIN MESSAGE READ
+# =========================
+def mark_admin_message_read(message_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("UPDATE admin_messages SET is_read = TRUE WHERE id = %s", (message_id,))
+            conn.commit()
+    except Exception as e:
+        print(f"mark_admin_message_read error: {e}")
+
+# =========================
+# USER: COUNT UNREAD ADMIN MESSAGES
+# =========================
+def count_unread_admin_messages(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM admin_messages
+                    WHERE user_id = %s AND is_read = FALSE
+                """, (user_id,))
+                return cursor.fetchone()[0]
+    except:
+        return 0
+
+# =========================
+# USER: SEND MESSAGE TO ADMIN
+# =========================
+def send_user_message_to_admin(user_id, message):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Find admin ID
+                cursor.execute("SELECT id FROM users WHERE username = 'AmandaU' LIMIT 1")
+                admin_row = cursor.fetchone()
+                if admin_row:
+                    admin_id = admin_row[0]
+                    cursor.execute("""
+                        INSERT INTO notifications (user_id, message, type)
+                        VALUES (%s, %s, 'user_to_admin')
+                    """, (admin_id, f"💬 Message from user {user_id}: {message}"))
+                    conn.commit()
+                    return True
+        return False
+    except:
+        return False
