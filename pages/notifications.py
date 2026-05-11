@@ -13,9 +13,12 @@ from dp import (
     mark_admin_message_read, 
     count_unread_admin_messages, 
     send_user_message_to_admin,
-    get_user_own_messages
+    get_user_own_messages,
+    init_database_tables
 )
 
+# Initialize database tables on first run
+init_database_tables()
 
 def get_user_id(username):
     try:
@@ -66,102 +69,83 @@ def delete_user_account(user_id):
             cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE claimed_by = %s", (user_id,))
             cursor.execute("DELETE FROM saved_jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM user_messages WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM admin_messages WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM notifications WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
-
 
 st.set_page_config(page_title="Notifications - Easy Jobs", page_icon="🔔", layout="centered")
 
 # Hide sidebar
-st.markdown("<style>[data-testid='stSidebarNav'],[data-testid='stSidebar']{display:none!important;}</style>", unsafe_allow_html=True)
-
-# Custom CSS
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-* { font-family: 'DM Sans', sans-serif; }
-
-[data-testid="stAppViewContainer"] { background: #0b1220; }
-
-.block-container {
-    max-width: 850px;
-    margin: auto;
-    padding: 1.2rem 2rem 3rem 2rem;
-}
-
-h1 { text-align: center; font-size: 2rem; font-weight: 800; color: #38bdf8; }
-
-div[data-testid="stContainer"] { margin-bottom: 10px; }
-
-html, body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #e5e7eb; }
-strong { color: #e5e7eb; }
-small { color: #64748b !important; }
-
-.stButton > button {
-    width: 100%; background: transparent;
-    border: 1px solid rgba(255,255,255,0.10); color: #e5e7eb;
-    border-radius: 10px; padding: 0.45rem; font-weight: 600; transition: all 0.2s ease;
-}
-.stButton > button:hover {
-    background: rgba(56,189,248,0.12);
-    border: 1px solid rgba(56,189,248,0.4); transform: translateY(-2px);
-}
-.stButton > button[kind="primary"] {
-    background: linear-gradient(90deg, #2563eb, #06b6d4); border: none; color: white;
-}
-
-hr { border-color: rgba(255,255,255,0.06); }
-.stAlert { border-radius: 12px; background: #0f172a; color: #cbd5e1; }
-.element-container { margin-bottom: 0.6rem; }
-footer { visibility: hidden; }
-
-.notif-unread {
-    background: #0f2a1e;
-    border-left: 4px solid #22c55e;
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 8px;
-}
-.notif-unread strong { color: #bbf7d0; }
-.notif-unread small  { color: #4ade80 !important; }
-
-.notif-read {
-    background: #131c2e;
-    border-left: 4px solid rgba(255,255,255,0.12);
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 8px;
-}
-.notif-read strong { color: #94a3b8; }
-.notif-read small  { color: #475569 !important; }
-
-.admin-direct { border-left: 4px solid #ef4444 !important; }
-.admin-broadcast { border-left: 4px solid #8b5cf6 !important; }
-
-.profile-panel {
-    background: #161b22; border: 1px solid #30363d;
-    border-radius: 14px; margin-bottom: 20px; overflow: hidden;
-}
-.profile-panel-header {
-    background: linear-gradient(135deg, #1a2d4a, #0d1117);
-    border-bottom: 1px solid #30363d; padding: 20px;
-    display: flex; align-items: center; gap: 16px;
-}
-.panel-avatar {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: #1f6feb; border: 3px solid #388bfd;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 26px; font-weight: 700; color: #fff;
-    overflow: hidden; flex-shrink: 0;
-}
-.panel-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
-.panel-name  { color: #e6edf3; font-size: 1.1rem; font-weight: 700; margin: 0 0 2px 0; }
-.panel-uname { color: #58a6ff; font-size: 0.82rem; margin: 0 0 2px 0; }
-.panel-email { color: #8b949e; font-size: 0.78rem; margin: 0; }
+    [data-testid='stSidebarNav'], [data-testid='stSidebar'] { display: none !important; }
+    [data-testid="stAppViewContainer"] { background: #0b1220; }
+    .block-container { max-width: 850px; margin: auto; padding: 1.2rem 2rem 3rem 2rem; }
+    h1 { text-align: center; font-size: 2rem; font-weight: 800; color: #38bdf8; }
+    div[data-testid="stContainer"] { margin-bottom: 10px; }
+    html, body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #e5e7eb; }
+    strong { color: #e5e7eb; }
+    small { color: #64748b !important; }
+    .stButton > button {
+        width: 100%; background: transparent;
+        border: 1px solid rgba(255,255,255,0.10); color: #e5e7eb;
+        border-radius: 10px; padding: 0.45rem; font-weight: 600; transition: all 0.2s ease;
+    }
+    .stButton > button:hover {
+        background: rgba(56,189,248,0.12);
+        border: 1px solid rgba(56,189,248,0.4); transform: translateY(-2px);
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(90deg, #2563eb, #06b6d4); border: none; color: white;
+    }
+    hr { border-color: rgba(255,255,255,0.06); }
+    .stAlert { border-radius: 12px; background: #0f172a; color: #cbd5e1; }
+    .element-container { margin-bottom: 0.6rem; }
+    footer { visibility: hidden; }
+    .notif-unread {
+        background: #0f2a1e;
+        border-left: 4px solid #22c55e;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 8px;
+    }
+    .notif-unread strong { color: #bbf7d0; }
+    .notif-unread small  { color: #4ade80 !important; }
+    .notif-read {
+        background: #131c2e;
+        border-left: 4px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 8px;
+    }
+    .notif-read strong { color: #94a3b8; }
+    .notif-read small  { color: #475569 !important; }
+    .admin-direct { border-left: 4px solid #ef4444 !important; }
+    .admin-broadcast { border-left: 4px solid #8b5cf6 !important; }
+    .profile-panel {
+        background: #161b22; border: 1px solid #30363d;
+        border-radius: 14px; margin-bottom: 20px; overflow: hidden;
+    }
+    .profile-panel-header {
+        background: linear-gradient(135deg, #1a2d4a, #0d1117);
+        border-bottom: 1px solid #30363d; padding: 20px;
+        display: flex; align-items: center; gap: 16px;
+    }
+    .panel-avatar {
+        width: 72px; height: 72px; border-radius: 50%;
+        background: #1f6feb; border: 3px solid #388bfd;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 26px; font-weight: 700; color: #fff;
+        overflow: hidden; flex-shrink: 0;
+    }
+    .panel-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+    .panel-name  { color: #e6edf3; font-size: 1.1rem; font-weight: 700; margin: 0 0 2px 0; }
+    .panel-uname { color: #58a6ff; font-size: 0.82rem; margin: 0 0 2px 0; }
+    .panel-email { color: #8b949e; font-size: 0.78rem; margin: 0; }
 </style>
 """, unsafe_allow_html=True)
-
-
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
@@ -172,10 +156,12 @@ if "show_profile_panel" not in st.session_state:
     st.session_state.show_profile_panel = False
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
-    
-if st.button("Home"):
-        st.switch_page("pages/home.py")
 
+# Home button
+col_home, col_spacer = st.columns([1, 10])
+with col_home:
+    if st.button("🏠 Home", use_container_width=True):
+        st.switch_page("pages/home.py")
 
 if not user_id:
     st.warning("⚠️ Please login to view notifications")
@@ -183,10 +169,7 @@ if not user_id:
         st.switch_page("EasyJobsWebApp.py")
     st.stop()
 
-# =========================
-# GET USER PROFILE
-# =========================
-
+# Get user profile
 profile = get_user_profile(user_id)
 if not profile:
     st.error("User profile not found")
@@ -196,12 +179,10 @@ p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = pro
 initials = ((p_name[0].upper() if p_name else "") + (p_surname[0].upper() if p_surname else "")) or "U"
 avatar_src = "data:image/jpeg;base64," + base64.b64encode(bytes(p_pic)).decode() if p_pic else None
 
-
+# Profile toggle button
 nav_l, nav_r = st.columns([9, 1])
-
 with nav_l:
     st.markdown('<p style="color:#38bdf8;font-size:1.15rem;font-weight:700;margin:6px 0 0 0;">🔔 Notifications</p>', unsafe_allow_html=True)
-
 with nav_r:
     toggle_label = "✕ Close" if st.session_state.show_profile_panel else "👤 Profile"
     if st.button(toggle_label, key="avatar_toggle", use_container_width=True):
@@ -209,7 +190,7 @@ with nav_r:
         st.session_state.confirm_delete = False
         st.rerun()
 
-
+# Profile panel
 if st.session_state.show_profile_panel:
     avatar_inner = f'<img src="{avatar_src}" />' if avatar_src else f'<span>{initials}</span>'
     
@@ -295,10 +276,7 @@ if st.session_state.show_profile_panel:
                 st.session_state.confirm_delete = False
                 st.rerun()
 
-# =========================
-# NOTIFICATIONS SECTION
-# =========================
-
+# Notifications section
 st.markdown("---")
 
 unread_job_notifications = count_unread(user_id)
@@ -307,7 +285,7 @@ unread_admin_messages = count_unread_admin_messages(user_id)
 tab1, tab2, tab3 = st.tabs([
     f"📋 Job Updates ({unread_job_notifications})",
     f"📨 Admin Messages ({unread_admin_messages})",
-    f"💬 My Messages"
+    f"💬 Contact Support"
 ])
 
 # TAB 1: JOB NOTIFICATIONS
@@ -348,7 +326,7 @@ with tab1:
                         mark_notification_read(notif_id)
                         st.rerun()
 
-
+# TAB 2: ADMIN MESSAGES
 with tab2:
     admin_messages = get_admin_messages(user_id)
     
@@ -358,7 +336,6 @@ with tab2:
         for msg in admin_messages:
             msg_id, admin_username, message_content, is_broadcast, is_read, created_at = msg
             
-            # Get first 50 chars as subject
             subject = message_content[:50] + ("..." if len(message_content) > 50 else "")
             type_class = "admin-direct" if not is_broadcast else "admin-broadcast"
             type_icon = "🔒" if not is_broadcast else "📢"
@@ -385,54 +362,66 @@ with tab2:
                     st.rerun()
             st.markdown("---")
 
-# TAB 3: SEND AND VIEW MESSAGES
+# TAB 3: SEND MESSAGE TO ADMIN
 with tab3:
-    st.markdown("###  Send Message to Admin")
+    st.markdown("### 📝 Send Message to Support")
+    st.markdown("Have a question or issue? Send us a message and we'll get back to you soon!")
     
     with st.form("send_admin_message"):
-        message_subject = st.text_input("Subject", placeholder="e.g., Question about job posting", key="msg_subject")
-        message_content = st.text_area("Message", placeholder="Type your message here...", height=100, key="msg_content")
+        message_subject = st.text_input(
+            "Subject", 
+            placeholder="e.g., Question about job posting, Account issue, etc.",
+            key="msg_subject"
+        )
+        message_content = st.text_area(
+            "Message", 
+            placeholder="Please provide details so we can better assist you...", 
+            height=150, 
+            key="msg_content"
+        )
         
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            submitted = st.form_submit_button("Send", use_container_width=True)
+        submitted = st.form_submit_button("📤 Send Message", use_container_width=True, type="primary")
         
         if submitted:
             if message_subject and message_content:
-                success = send_user_message_to_admin(user_id, message_subject, message_content)
-                if success:
-                    st.success("✅ Message sent to admin successfully!")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to send message. Please try again.")
+                with st.spinner("Sending your message..."):
+                    success = send_user_message_to_admin(user_id, message_subject, message_content)
+                    if success:
+                        st.success("✅ Message sent to support successfully!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to send message. Please try again.")
             else:
                 st.warning("⚠️ Please fill in both subject and message")
     
     st.markdown("---")
-    st.markdown("###  My Sent Messages")
+    st.markdown("### 📨 My Support Tickets")
     
     user_messages = get_user_own_messages(user_id)
     
     if not user_messages:
-        st.info("You haven't sent any messages yet")
+        st.info("You haven't sent any messages yet. Use the form above to contact support.")
     else:
         for msg in user_messages:
             msg_id, subject, message, admin_response, responded_at, created_at = msg
             
             with st.expander(f"📧 {subject} - {created_at.strftime('%Y-%m-%d %H:%M') if created_at else 'Just now'}"):
-                st.markdown(f"**Your Message:**\n{message}")
+                st.markdown(f"**Your Message:**")
+                st.markdown(f"{message}")
+                st.markdown("---")
                 if admin_response:
-                    st.markdown(f"**Admin Response:**\n{admin_response}")
+                    st.markdown(f"**💬 Admin Response:**")
+                    st.markdown(f"{admin_response}")
                     st.markdown(f"*Responded on: {responded_at.strftime('%Y-%m-%d %H:%M') if responded_at else 'N/A'}*")
+                    st.markdown("✅ **Status:** Resolved")
                 else:
-                    st.info(" Waiting for admin response...")
-
-
+                    st.info("⏳ **Status:** Waiting for support response...")
+                    st.markdown("*Our team will review your message and respond as soon as possible.*")
 
 st.markdown("---")
 st.markdown(
     '<p style="text-align: center; color: #64748b; font-size: 0.8rem;">'
-    ' Stay updated with your job notifications and admin messages</p>',
+    ' Stay updated with your job notifications and support messages</p>',
     unsafe_allow_html=True
 )
