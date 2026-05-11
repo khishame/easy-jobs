@@ -97,7 +97,7 @@ def get_notifications(user_id):
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, job_id, message, is_read, created_at
+                    SELECT id, message, created_at, is_read, job_id
                     FROM notifications
                     WHERE user_id = %s
                     ORDER BY created_at DESC
@@ -116,8 +116,10 @@ def mark_notification_read(notification_id):
             with conn.cursor() as cursor:
                 cursor.execute("UPDATE notifications SET is_read = TRUE WHERE id = %s", (notification_id,))
             conn.commit()
+            return True
     except Exception as e:
         print(f"mark_read error: {e}")
+        return False
  
 # =========================
 # MARK ALL NOTIFICATIONS AS READ
@@ -128,8 +130,10 @@ def mark_all_read(user_id):
             with conn.cursor() as cursor:
                 cursor.execute("UPDATE notifications SET is_read = TRUE WHERE user_id = %s", (user_id,))
             conn.commit()
+            return True
     except Exception as e:
         print(f"mark_all_read error: {e}")
+        return False
  
 # =========================
 # COUNT UNREAD NOTIFICATIONS
@@ -204,14 +208,23 @@ def get_admin_messages(user_id):
 # =========================
 # USER: MARK ADMIN MESSAGE AS READ
 # =========================
-def mark_admin_message_read(message_id):
+def mark_admin_message_read(message_id, user_id=None):
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("UPDATE admin_messages SET is_read = TRUE WHERE id = %s", (message_id,))
+                if user_id:
+                    cursor.execute("""
+                        UPDATE admin_messages 
+                        SET is_read = TRUE 
+                        WHERE id = %s AND user_id = %s
+                    """, (message_id, user_id))
+                else:
+                    cursor.execute("UPDATE admin_messages SET is_read = TRUE WHERE id = %s", (message_id,))
             conn.commit()
+            return True
     except Exception as e:
         print(f"mark_admin_message_read error: {e}")
+        return False
  
 # =========================
 # USER: COUNT UNREAD ADMIN MESSAGES
@@ -261,66 +274,145 @@ def delete_admin_message(message_id):
         print(f"delete_admin_message error: {e}")
         return False
 
-def get_admin_messages(user_id):
+# =========================
+# CREATE USER MESSAGES TABLE
+# =========================
+def create_user_messages_table():
+    """Run this once to create the user messages table"""
     try:
         with get_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    SELECT id, admin_username, message, is_broadcast, is_read, created_at
-                    FROM admin_messages
+                    CREATE TABLE IF NOT EXISTS user_messages (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                        username VARCHAR(255),
+                        email VARCHAR(255),
+                        subject VARCHAR(255),
+                        message TEXT,
+                        is_read BOOLEAN DEFAULT FALSE,
+                        admin_response TEXT,
+                        responded_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"create_user_messages_table error: {e}")
+        return False
+
+# =========================
+# USER: SEND MESSAGE TO ADMIN
+# =========================
+def send_user_message_to_admin(user_id, subject, message):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                # Get user details
+                cursor.execute("SELECT username, email FROM users WHERE id = %s", (user_id,))
+                user_row = cursor.fetchone()
+                if not user_row:
+                    return False
+                
+                username, email = user_row
+                
+                # Insert into user_messages table
+                cursor.execute("""
+                    INSERT INTO user_messages (user_id, username, email, subject, message)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (user_id, username, email, subject, message))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"send_user_message_to_admin error: {e}")
+        return False
+
+# =========================
+# ADMIN: GET ALL USER MESSAGES
+# =========================
+def get_user_messages_for_admin(unread_only=False):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                if unread_only:
+                    cursor.execute("""
+                        SELECT id, user_id, username, email, subject, message, is_read, admin_response, created_at
+                        FROM user_messages
+                        WHERE is_read = FALSE
+                        ORDER BY created_at DESC
+                    """)
+                else:
+                    cursor.execute("""
+                        SELECT id, user_id, username, email, subject, message, is_read, admin_response, created_at
+                        FROM user_messages
+                        ORDER BY created_at DESC
+                    """)
+                return cursor.fetchall()
+    except Exception as e:
+        print(f"get_user_messages_for_admin error: {e}")
+        return []
+
+# =========================
+# ADMIN: MARK USER MESSAGE AS READ
+# =========================
+def mark_user_message_read(message_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE user_messages 
+                    SET is_read = TRUE 
+                    WHERE id = %s
+                """, (message_id,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"mark_user_message_read error: {e}")
+        return False
+
+# =========================
+# ADMIN: RESPOND TO USER MESSAGE
+# =========================
+def admin_respond_to_user(message_id, response_text):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE user_messages 
+                    SET admin_response = %s, responded_at = NOW()
+                    WHERE id = %s
+                """, (response_text, message_id))
+                
+                # Get the user_id to send notification
+                cursor.execute("SELECT user_id FROM user_messages WHERE id = %s", (message_id,))
+                user_id = cursor.fetchone()[0]
+                
+                # Send notification to user
+                cursor.execute("""
+                    INSERT INTO notifications (user_id, message)
+                    VALUES (%s, %s)
+                """, (user_id, f"📨 Admin responded to your message: {response_text[:100]}..."))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"admin_respond_to_user error: {e}")
+        return False
+
+# =========================
+# GET USER'S OWN MESSAGES AND RESPONSES
+# =========================
+def get_user_own_messages(user_id):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    SELECT id, subject, message, admin_response, responded_at, created_at
+                    FROM user_messages
                     WHERE user_id = %s
                     ORDER BY created_at DESC
                 """, (user_id,))
                 return cursor.fetchall()
     except Exception as e:
-        print(f"get_admin_messages error: {e}")
+        print(f"get_user_own_messages error: {e}")
         return []
-
-# =========================
-# USER: MARK ADMIN MESSAGE READ
-# =========================
-def mark_admin_message_read(message_id):
-    try:
-        with get_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("UPDATE admin_messages SET is_read = TRUE WHERE id = %s", (message_id,))
-            conn.commit()
-    except Exception as e:
-        print(f"mark_admin_message_read error: {e}")
-
-# =========================
-# USER: COUNT UNREAD ADMIN MESSAGES
-# =========================
-def count_unread_admin_messages(user_id):
-    try:
-        with get_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    SELECT COUNT(*) FROM admin_messages
-                    WHERE user_id = %s AND is_read = FALSE
-                """, (user_id,))
-                return cursor.fetchone()[0]
-    except:
-        return 0
-
-# =========================
-# USER: SEND MESSAGE TO ADMIN
-# =========================
-def send_user_message_to_admin(user_id, message):
-    try:
-        with get_connection() as conn:
-            with conn.cursor() as cursor:
-                # Find admin ID
-                cursor.execute("SELECT id FROM users WHERE username = 'AmandaU' LIMIT 1")
-                admin_row = cursor.fetchone()
-                if admin_row:
-                    admin_id = admin_row[0]
-                    cursor.execute("""
-                        INSERT INTO notifications (user_id, message, type)
-                        VALUES (%s, %s, 'user_to_admin')
-                    """, (admin_id, f"💬 Message from user {user_id}: {message}"))
-                    conn.commit()
-                    return True
-        return False
-    except:
-        return False
