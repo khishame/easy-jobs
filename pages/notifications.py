@@ -172,7 +172,9 @@ if "show_profile_panel" not in st.session_state:
     st.session_state.show_profile_panel = False
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
-
+    
+if st.button("go Home"):
+        st.switch_page("pages/home.py")
 
 
 if not user_id:
@@ -426,8 +428,6 @@ with tab3:
                 else:
                     st.info(" Waiting for admin response...")
 
-    st.button("Back"):
-        st.switch_page("pages/home.py")
 
 
 st.markdown("---")
