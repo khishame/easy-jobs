@@ -361,13 +361,8 @@ with tab1:
                     if st.button("✓ Mark Read", key=f"mark_{notif_id}"):
                         mark_notification_read(notif_id)
                         st.rerun()
-                if related_job_id:
-                    with col_btn2:
-                        if st.button("🔍 View Job", key=f"view_job_{notif_id}"):
-                            st.info(f"Job ID: {related_job_id} - Feature coming soon")
-            st.markdown("---")
 
-# TAB 2: ADMIN MESSAGES
+
 with tab2:
     admin_messages = get_admin_messages(user_id)
     
