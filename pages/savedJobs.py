@@ -30,20 +30,14 @@ def get_user_profile(user_id):
             """, (user_id,))
             return cursor.fetchone()
 
-def update_user_profile(user_id, name, surname, username, email, cellphone1, cellphone2, address):
+def update_user_profile(user_id, name, surname, username, email, cellphone1, cellphone2, address, profile_picture=None):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
                 UPDATE users SET name=%s, surname=%s, username=%s, email=%s,
-                    cellphone1=%s, cellphone2=%s, address=%s WHERE id=%s
-            """, (name, surname, username, email, cellphone1, cellphone2, address, user_id))
-        conn.commit()
-
-def update_profile_picture(user_id, image_bytes):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("UPDATE users SET profile_picture=%s WHERE id=%s",
-                           (psycopg2.Binary(image_bytes), user_id))
+                    cellphone1=%s, cellphone2=%s, address=%s, profile_picture=%s
+                WHERE id=%s
+            """, (name, surname, username, email, cellphone1, cellphone2, address, profile_picture, user_id))
         conn.commit()
 
 def update_user_password(user_id, new_password):
@@ -57,6 +51,9 @@ def delete_user_account(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE claimed_by = %s", (user_id,))
+            cursor.execute("DELETE FROM notifications WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM admin_messages WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM user_messages WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM saved_jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
@@ -256,19 +253,12 @@ if st.session_state.show_profile_panel and user_id and profile:
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("📷 Change Profile Picture", expanded=False):
-        new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
-        if new_pic:
-            pic_bytes = new_pic.read()
-            prev_col, btn_col = st.columns([1, 3])
-            with prev_col:
-                st.image(io.BytesIO(pic_bytes), width=72)
-            with btn_col:
-                st.write("")
-                if st.button("💾 Save Photo", key="save_pic"):
-                    update_profile_picture(user_id, pic_bytes)
-                    st.success("✅ Profile picture updated!")
-                    st.rerun()
+    # ── Profile picture upload ──
+    st.markdown("##### 📷 Change Profile Picture")
+    new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
+    if new_pic:
+        st.image(io.BytesIO(new_pic.read()), width=72)
+        new_pic.seek(0)
 
     st.markdown("### ✏️ Edit Profile")
     c1, c2 = st.columns(2)
@@ -296,8 +286,9 @@ if st.session_state.show_profile_panel and user_id and profile:
             if new_pw and new_pw != conf_pw:
                 st.error("❌ Passwords do not match.")
             else:
+                pic_to_save = psycopg2.Binary(new_pic.read()) if new_pic else p_pic
                 update_user_profile(user_id, new_name, new_surname, new_username,
-                                    new_email, new_cell1, new_cell2, new_address)
+                                    new_email, new_cell1, new_cell2, new_address, pic_to_save)
                 if new_pw:
                     update_user_password(user_id, new_pw)
                 st.success("✅ Profile updated!")
