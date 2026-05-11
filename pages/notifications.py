@@ -16,9 +16,6 @@ from dp import (
     get_user_own_messages
 )
 
-# =========================
-# USER PROFILE FUNCTIONS (these need to be defined here or imported from dp)
-# =========================
 
 def get_user_id(username):
     try:
@@ -72,9 +69,6 @@ def delete_user_account(user_id):
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
 
-# =========================
-# PAGE CONFIGURATION
-# =========================
 
 st.set_page_config(page_title="Notifications - Easy Jobs", page_icon="🔔", layout="centered")
 
@@ -167,9 +161,7 @@ footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
-# SESSION STATE INITIALIZATION
-# =========================
+
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
@@ -181,9 +173,7 @@ if "show_profile_panel" not in st.session_state:
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
 
-# =========================
-# CHECK LOGIN STATUS
-# =========================
+
 
 if not user_id:
     st.warning("⚠️ Please login to view notifications")
@@ -204,9 +194,6 @@ p_name, p_surname, p_username, p_email, p_cell1, p_cell2, p_address, p_pic = pro
 initials = ((p_name[0].upper() if p_name else "") + (p_surname[0].upper() if p_surname else "")) or "U"
 avatar_src = "data:image/jpeg;base64," + base64.b64encode(bytes(p_pic)).decode() if p_pic else None
 
-# =========================
-# HEADER WITH PROFILE TOGGLE
-# =========================
 
 nav_l, nav_r = st.columns([9, 1])
 
@@ -220,9 +207,6 @@ with nav_r:
         st.session_state.confirm_delete = False
         st.rerun()
 
-# =========================
-# PROFILE PANEL
-# =========================
 
 if st.session_state.show_profile_panel:
     avatar_inner = f'<img src="{avatar_src}" />' if avatar_src else f'<span>{initials}</span>'
@@ -240,7 +224,7 @@ if st.session_state.show_profile_panel:
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("📷 Change Profile Picture", expanded=False):
+    with st.expander("Change Profile Picture", expanded=False):
         new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
         if new_pic:
             pic_bytes = new_pic.read()
@@ -401,7 +385,7 @@ with tab2:
 
 # TAB 3: SEND AND VIEW MESSAGES
 with tab3:
-    st.markdown("### 📝 Send Message to Admin")
+    st.markdown("###  Send Message to Admin")
     
     with st.form("send_admin_message"):
         message_subject = st.text_input("Subject", placeholder="e.g., Question about job posting", key="msg_subject")
@@ -409,7 +393,7 @@ with tab3:
         
         col1, col2 = st.columns([1, 4])
         with col1:
-            submitted = st.form_submit_button("📤 Send", use_container_width=True)
+            submitted = st.form_submit_button("Send", use_container_width=True)
         
         if submitted:
             if message_subject and message_content:
@@ -424,12 +408,12 @@ with tab3:
                 st.warning("⚠️ Please fill in both subject and message")
     
     st.markdown("---")
-    st.markdown("### 📂 My Sent Messages")
+    st.markdown("###  My Sent Messages")
     
     user_messages = get_user_own_messages(user_id)
     
     if not user_messages:
-        st.info("📭 You haven't sent any messages yet")
+        st.info("You haven't sent any messages yet")
     else:
         for msg in user_messages:
             msg_id, subject, message, admin_response, responded_at, created_at = msg
@@ -440,15 +424,13 @@ with tab3:
                     st.markdown(f"**Admin Response:**\n{admin_response}")
                     st.markdown(f"*Responded on: {responded_at.strftime('%Y-%m-%d %H:%M') if responded_at else 'N/A'}*")
                 else:
-                    st.info("⏳ Waiting for admin response...")
+                    st.info(" Waiting for admin response...")
+ 
 
-# =========================
-# FOOTER
-# =========================
 
 st.markdown("---")
 st.markdown(
     '<p style="text-align: center; color: #64748b; font-size: 0.8rem;">'
-    '🔔 Stay updated with your job notifications and admin messages</p>',
+    ' Stay updated with your job notifications and admin messages</p>',
     unsafe_allow_html=True
 )
