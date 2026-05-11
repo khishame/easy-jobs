@@ -70,20 +70,14 @@ def get_user_profile(user_id):
             """, (user_id,))
             return cursor.fetchone()
 
-def update_user_profile(user_id, name, surname, username, email, cellphone1, cellphone2, address):
+def update_user_profile(user_id, name, surname, username, email, cellphone1, cellphone2, address, profile_picture=None):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
                 UPDATE users SET name=%s, surname=%s, username=%s, email=%s,
-                    cellphone1=%s, cellphone2=%s, address=%s WHERE id=%s
-            """, (name, surname, username, email, cellphone1, cellphone2, address, user_id))
-        conn.commit()
-
-def update_profile_picture(user_id, image_bytes):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("UPDATE users SET profile_picture=%s WHERE id=%s",
-                           (psycopg2.Binary(image_bytes), user_id))
+                    cellphone1=%s, cellphone2=%s, address=%s, profile_picture=%s
+                WHERE id=%s
+            """, (name, surname, username, email, cellphone1, cellphone2, address, profile_picture, user_id))
         conn.commit()
 
 def update_user_password(user_id, new_password):
@@ -97,6 +91,9 @@ def delete_user_account(user_id):
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE claimed_by = %s", (user_id,))
+            cursor.execute("DELETE FROM notifications WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM admin_messages WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM user_messages WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM saved_jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
@@ -160,7 +157,6 @@ footer { visibility: hidden; }
     border-radius: 6px;
 }
 
-/* ── Profile panel card ── */
 .profile-panel {
     background: #161b22;
     border: 1px solid #30363d;
@@ -230,7 +226,6 @@ with nav_l:
 
 with nav_r:
     if user_id:
-        # Show avatar image or initials as button label
         if avatar_src:
             avatar_display = f'<img src="{avatar_src}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;border:2px solid #388bfd;" />'
         else:
@@ -270,19 +265,11 @@ if st.session_state.show_profile_panel and user_id and profile:
     """, unsafe_allow_html=True)
 
     # ── Profile picture upload ──
-    with st.expander("📷 Change Profile Picture", expanded=False):
-        new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
-        if new_pic:
-            pic_bytes = new_pic.read()
-            prev_col, btn_col = st.columns([1, 3])
-            with prev_col:
-                st.image(io.BytesIO(pic_bytes), width=72)
-            with btn_col:
-                st.write("")
-                if st.button("💾 Save Photo", key="save_pic"):
-                    update_profile_picture(user_id, pic_bytes)
-                    st.success("✅ Profile picture updated!")
-                    st.rerun()
+    st.markdown("##### 📷 Change Profile Picture")
+    new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
+    if new_pic:
+        st.image(io.BytesIO(new_pic.read()), width=72)
+        new_pic.seek(0)
 
     # ── Edit fields ──
     st.markdown("### ✏️ Edit Profile")
@@ -313,8 +300,13 @@ if st.session_state.show_profile_panel and user_id and profile:
             if new_pw and new_pw != conf_pw:
                 st.error("❌ Passwords do not match.")
             else:
+                # Use new pic if uploaded, else keep existing
+                if new_pic:
+                    pic_to_save = psycopg2.Binary(new_pic.read())
+                else:
+                    pic_to_save = p_pic
                 update_user_profile(user_id, new_name, new_surname, new_username,
-                                    new_email, new_cell1, new_cell2, new_address)
+                                    new_email, new_cell1, new_cell2, new_address, pic_to_save)
                 if new_pw:
                     update_user_password(user_id, new_pw)
                 st.success("✅ Profile updated!")
@@ -369,7 +361,7 @@ with col5:
 
 st.divider()
 
-# ── Filters (inline expander, replaces sidebar) ───────────────────────────────
+# ── Filters ───────────────────────────────────────────────────────────────────
 
 with st.expander("🔍 Filters & Sort", expanded=False):
     f1, f2, f3 = st.columns(3)
