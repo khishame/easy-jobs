@@ -102,7 +102,7 @@ def delete_user_account(user_id):
 
 # ── Page config ───────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="Easy Jobs", page_icon="💼", layout="wide")
+st.set_page_config(page_title="Easy Jobs", layout="wide")
 
 # Hide sidebar completely
 st.markdown("<style>[data-testid='stSidebarNav'],[data-testid='stSidebar']{display:none!important;}</style>", unsafe_allow_html=True)
@@ -189,7 +189,6 @@ footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session state ─────────────────────────────────────────────────────────────
 
 user_id = st.session_state.get("user_id")
 
@@ -198,7 +197,6 @@ if "show_profile_panel" not in st.session_state:
 if "confirm_delete" not in st.session_state:
     st.session_state.confirm_delete = False
 
-# ── Load profile data ─────────────────────────────────────────────────────────
 
 profile    = None
 initials   = "U"
@@ -238,7 +236,7 @@ with nav_r:
             st.session_state.confirm_delete = False
             st.rerun()
     else:
-        if st.button("🔑 Login", use_container_width=True, key="login_btn"):
+        if st.button("Login", use_container_width=True, key="login_btn"):
             st.switch_page("EasyJobsWebApp.py")
 
 # ── Inline profile panel ──────────────────────────────────────────────────────
@@ -266,14 +264,14 @@ if st.session_state.show_profile_panel and user_id and profile:
     """, unsafe_allow_html=True)
 
     # ── Profile picture upload ──
-    st.markdown("##### 📷 Change Profile Picture")
+    st.markdown("#####  Change Profile Picture")
     new_pic = st.file_uploader("Upload a photo (JPG or PNG)", type=["jpg", "jpeg", "png"], key="pic_upload")
     if new_pic:
         st.image(io.BytesIO(new_pic.read()), width=72)
         new_pic.seek(0)
 
     # ── Edit fields ──
-    st.markdown("### ✏️ Edit Profile")
+    st.markdown("###  Edit Profile")
     c1, c2 = st.columns(2)
     with c1:
         new_name     = st.text_input("First Name",    value=p_name     or "", key="pf_name")
@@ -286,7 +284,7 @@ if st.session_state.show_profile_panel and user_id and profile:
         new_cell2    = st.text_input("Cell Number 2", value=p_cell2    or "", key="pf_cell2")
 
     # ── Password ──
-    st.markdown("#### 🔒 Change Password")
+    st.markdown("####  Change Password")
     pw1, pw2 = st.columns(2)
     with pw1:
         new_pw  = st.text_input("New Password",     type="password", key="pf_pw",  placeholder="Leave blank to keep current")
@@ -297,7 +295,7 @@ if st.session_state.show_profile_panel and user_id and profile:
     st.markdown("")
     ba, bb, bc = st.columns([2, 1, 1])
     with ba:
-        if st.button("💾 Save Changes", use_container_width=True, type="primary", key="pf_save"):
+        if st.button("Save Changes", use_container_width=True, type="primary", key="pf_save"):
             if new_pw and new_pw != conf_pw:
                 st.error("❌ Passwords do not match.")
             else:
@@ -314,17 +312,17 @@ if st.session_state.show_profile_panel and user_id and profile:
                 st.session_state.show_profile_panel = False
                 st.rerun()
     with bb:
-        if st.button("🚪 Log Out", use_container_width=True, key="pf_logout"):
+        if st.button("Log Out", use_container_width=True, key="pf_logout"):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.switch_page("EasyJobsWebApp.py")
     with bc:
-        if st.button("🗑️ Delete Account", use_container_width=True, key="pf_del_open"):
+        if st.button("Delete Account", use_container_width=True, key="pf_del_open"):
             st.session_state.confirm_delete = True
 
     # ── Delete confirmation ──
     if st.session_state.confirm_delete:
-        st.warning("⚠️ This will **permanently delete** your account and all your data.")
+        st.warning(" This will **permanently delete** your account and all your data.")
         confirm_del = st.text_input("Type DELETE to confirm", key="pf_del_confirm")
         if st.button("Confirm Delete", key="pf_delete_final", type="primary"):
             if confirm_del.strip() == "DELETE":
@@ -340,7 +338,7 @@ if st.session_state.show_profile_panel and user_id and profile:
 
 # ── Nav buttons ───────────────────────────────────────────────────────────────
 
-st.title("💼 Easy Jobs Marketplace")
+st.title(" Easy Jobs Marketplace")
 st.write("Connect with skilled workers or find your next opportunity")
 
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -364,7 +362,7 @@ st.divider()
 
 # ── Filters ───────────────────────────────────────────────────────────────────
 
-with st.expander("🔍 Filters & Sort", expanded=False):
+with st.expander("Filters & Sort", expanded=False):
     f1, f2, f3 = st.columns(3)
     with f1:
         price_filter = st.radio("Price Range", ["All", "Under R500", "R500 - R1000", "R1000 - R5000", "Above R5000"], key="pf_filter")
@@ -389,8 +387,8 @@ try:
     jobs = get_all_jobs()
 
     if not jobs:
-        st.info("📭 No jobs posted yet. Be the first to post a job!")
-        if st.button("Post Your First Job 🚀"):
+        st.info(" No jobs posted yet. Be the first to post a job!")
+        if st.button("Post Your First Job "):
             st.switch_page("pages/postJob.py")
     else:
         job_list = []
@@ -498,7 +496,7 @@ try:
                                     save_job(user_id, j["id"])
                                     st.rerun()
                         else:
-                            st.caption("🔒 Login")
+                            st.caption("Login")
 
                     if st.session_state.get(f"show_details_{j['id']}", False):
                         with st.container():
