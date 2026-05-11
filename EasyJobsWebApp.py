@@ -3,7 +3,7 @@ import psycopg2
 import bcrypt
 import os
  
-ADMIN_USERNAMES = {"AmandaU"}  # ✅ Your admin username
+ADMIN_USERNAMES = {"AmandaU"}
  
 def get_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
@@ -38,7 +38,7 @@ def verify_user(username_or_email: str, password: str):
         st.error(f"Database error: {e}")
         return False, None, None
 
-# 🔥 SESSION STATE - Add is_admin flag
+
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
 if "username" not in st.session_state:
@@ -68,9 +68,9 @@ footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
  
-st.subheader("Welcome to Easy Jobs 👋")
-st.title("Sell your skills or hire a skilled worker 🔍")
-st.write("Easy Jobs is a platform where skilled workers can offer services and clients can hire them.")
+st.subheader("Welcome to Easy Jobs")
+st.title("Sell your skills or hire a skilled worker ")
+st.write("Easy Jobs is a platform where rangular people can hire skilled individuals for a fee.")
  
 col1, col2 = st.columns(2)
 with col1:
@@ -79,10 +79,10 @@ with col2:
     password_input = st.text_input("Password", type="password")
  
 btn_col1, btn_col2 = st.columns(2)
-login_clicked  = btn_col1.button("🔑 Login", use_container_width=True)
-signup_clicked = btn_col2.button("📝 Sign Up", use_container_width=True)
+login_clicked  = btn_col1.button("Sigh In", use_container_width=True)
+signup_clicked = btn_col2.button("Sign Up", use_container_width=True)
  
-# 🔥 FIXED LOGIN - REPLACES YOUR OLD LOGIN SECTION
+
 if login_clicked:
     user_input = user_input.strip()
     password_input = password_input.strip()
@@ -96,17 +96,17 @@ if login_clicked:
             st.session_state["user_id"] = user_id
             st.session_state["username"] = username
             
-            # 🔥 ADMIN AUTO-REDIRECT
+            
             if username.lower() in {u.lower() for u in ADMIN_USERNAMES}:
                 st.session_state["is_admin"] = True
-                st.success(f"👑 **Admin login successful!** Welcome @{username}")
+                st.success(f" **Admin login successful!** Welcome @{username}")
                 st.switch_page("pages/admin.py")  # ← ADMIN GOES HERE
             else:
                 st.session_state["is_admin"] = False
-                st.success("✅ Login successful!")
+                st.success(" Login successful!")
                 st.switch_page("pages/home.py")  # ← USERS GO HERE
         else:
-            st.error("❌ Invalid username/email or password")
+            st.error(" Invalid username/email or password")
 
 if signup_clicked:
     st.switch_page("pages/signUp.py")
