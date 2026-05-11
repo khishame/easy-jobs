@@ -94,7 +94,6 @@ def delete_user_account(user_id):
             cursor.execute("UPDATE jobs SET claimed_by = NULL WHERE claimed_by = %s", (user_id,))
             cursor.execute("DELETE FROM notifications WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM admin_messages WHERE user_id = %s", (user_id,))
-            cursor.execute("DELETE FROM user_messages WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM saved_jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM jobs WHERE user_id = %s", (user_id,))
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
