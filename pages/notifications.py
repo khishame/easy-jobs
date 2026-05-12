@@ -216,12 +216,12 @@ if st.session_state.show_profile_panel:
                 st.image(io.BytesIO(pic_bytes), width=72)
             with btn_col:
                 st.write("")
-                if st.button("💾 Save Photo", key="save_pic"):
+                if st.button("Save Photo", key="save_pic"):
                     update_profile_picture(user_id, pic_bytes)
-                    st.success("✅ Profile picture updated!")
+                    st.success("Profile picture updated!")
                     st.rerun()
 
-    st.markdown("### ✏️ Edit Profile")
+    st.markdown("### Edit Profile")
     c1, c2 = st.columns(2)
     with c1:
         new_name = st.text_input("First Name", value=p_name or "", key="pf_name")
@@ -233,46 +233,46 @@ if st.session_state.show_profile_panel:
         new_email = st.text_input("Email", value=p_email or "", key="pf_email")
         new_cell2 = st.text_input("Cell Number 2", value=p_cell2 or "", key="pf_cell2")
 
-    st.markdown("#### 🔒 Change Password")
+    st.markdown("#### Change Password")
     pw1, pw2 = st.columns(2)
     with pw1:
         new_password = st.text_input("New Password", type="password", key="new_pw")
     with pw2:
         confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pw")
     
-    if st.button("🔄 Update Password", key="update_pw"):
+    if st.button("Update Password", key="update_pw"):
         if new_password and new_password == confirm_password:
             if len(new_password) >= 6:
                 update_user_password(user_id, new_password)
                 st.success("✅ Password updated successfully!")
                 st.rerun()
             else:
-                st.error("❌ Password must be at least 6 characters")
+                st.error("Password must be at least 6 characters")
         elif new_password or confirm_password:
             st.error("❌ Passwords do not match")
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💾 Save Profile Changes", key="save_profile"):
+        if st.button("Save Profile Changes", key="save_profile"):
             update_user_profile(user_id, new_name, new_surname, new_username, new_email, new_cell1, new_cell2, new_address)
-            st.success("✅ Profile updated!")
+            st.success(" Profile updated!")
             st.rerun()
     
     with col2:
-        if st.button("🗑️ Delete Account", key="delete_acc_btn"):
+        if st.button(" Delete Account", key="delete_acc_btn"):
             st.session_state.confirm_delete = True
 
     if st.session_state.confirm_delete:
-        st.warning("⚠️ **WARNING**: This action is permanent and cannot be undone!")
+        st.warning("**WARNING**: This action is permanent and cannot be undone!")
         confirm_col1, confirm_col2 = st.columns(2)
         with confirm_col1:
-            if st.button("✅ Yes, Delete My Account", key="confirm_delete"):
+            if st.button("Yes, Delete My Account", key="confirm_delete"):
                 delete_user_account(user_id)
                 st.session_state.clear()
                 st.success("Account deleted successfully")
                 st.switch_page("EasyJobsWebApp.py")
         with confirm_col2:
-            if st.button("❌ Cancel", key="cancel_delete"):
+            if st.button(" Cancel", key="cancel_delete"):
                 st.session_state.confirm_delete = False
                 st.rerun()
 
@@ -293,10 +293,10 @@ with tab1:
     notifications = get_notifications(user_id)
     
     if not notifications:
-        st.info("📭 No job notifications yet")
+        st.info(" No job notifications yet")
     else:
         if unread_job_notifications > 0:
-            if st.button("✅ Mark All Job Notifications as Read", key="mark_all_job"):
+            if st.button(" Mark All Job Notifications as Read", key="mark_all_job"):
                 mark_all_read(user_id)
                 st.rerun()
         
@@ -331,7 +331,7 @@ with tab2:
     admin_messages = get_admin_messages(user_id)
     
     if not admin_messages:
-        st.info("📭 No admin messages yet")
+        st.info("No admin messages yet")
     else:
         for msg in admin_messages:
             msg_id, admin_username, message_content, is_broadcast, is_read, created_at = msg
@@ -388,6 +388,8 @@ with tab3:
                     success = send_user_message_to_admin(user_id, message_subject, message_content)
                     if success:
                         st.success("✅ Message sent to support successfully!")
+                        message_subject =""
+                        message_content =""
                         st.balloons()
                         st.rerun()
                     else:
